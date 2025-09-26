@@ -1,0 +1,19 @@
+FROM python:3.10-slim
+
+WORKDIR /app
+
+RUN mkdir -p /root/.cache/pip
+
+COPY requirements-minimal.txt ./requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --upgrade pip && \
+    pip install -r requirements.txt
+
+COPY src/ ./src/
+COPY *.py ./
+
+EXPOSE 8050
+
+ENV PYTHONPATH=/app:/app/src
+
+CMD ["python", "/app/src/dashboard/modern_app.py"]
