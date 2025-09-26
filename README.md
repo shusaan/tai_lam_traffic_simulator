@@ -249,4 +249,4 @@ For hackathon support or questions:
 
 ---
 
-Built for AWS Hackathon 2024 🏆
+Built for AWS Hackathon 2025 🏆
