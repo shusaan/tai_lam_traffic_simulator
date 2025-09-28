@@ -48,9 +48,9 @@ ROADS = {
 
 # Toll configuration
 TOLL_CONFIG = TollConfig(
-    base_price=8.0,  # HKD
-    min_price=5.0,
-    max_price=25.0,
+    base_price=30.0,  # HKD
+    min_price=18.0,
+    max_price=55.0,
     max_change_percent=0.20
 )
 
