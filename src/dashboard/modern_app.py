@@ -12,7 +12,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from simulator.traffic_simulator import TrafficSimulator
-from simulator.simple_pricing_model import SimplePricingModel as HybridPricingModel
+from simulator.trained_pricing_model import TrainedPricingModel as HybridPricingModel
 from simple_data_processor import TrafficDataProcessor
 from config import SCENARIOS, ROADS
 
