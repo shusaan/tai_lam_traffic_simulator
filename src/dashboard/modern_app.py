@@ -21,9 +21,116 @@ simulator = TrafficSimulator()
 pricing_model = HybridPricingModel()
 data_processor = TrafficDataProcessor()
 
-# Initialize Dash app
-app = dash.Dash(__name__)
+# Initialize Dash app with external stylesheets
+app = dash.Dash(__name__, external_stylesheets=[
+    'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap'
+])
 app.title = "Tai Lam AI Traffic Optimizer"
+
+# Add custom CSS
+app.index_string = '''
+<!DOCTYPE html>
+<html>
+    <head>
+        {%metas%}
+        <title>{%title%}</title>
+        {%favicon%}
+        {%css%}
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font-family: 'Inter', sans-serif; background: #f8fafc; }
+            
+            .app-container { display: flex; min-height: 100vh; }
+            
+            /* Sidebar */
+            .sidebar { width: 280px; background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%); color: white; padding: 0; box-shadow: 4px 0 20px rgba(0,0,0,0.1); }
+            .sidebar-header { padding: 30px 25px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+            .logo-icon { font-size: 2.5rem; margin-bottom: 15px; }
+            .sidebar-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 5px; }
+            .sidebar-subtitle { font-size: 0.9rem; opacity: 0.7; }
+            .sidebar-content { padding: 25px; }
+            .section-title { font-size: 1rem; font-weight: 600; margin-bottom: 15px; color: #e2e8f0; }
+            .input-label { font-size: 0.85rem; color: #cbd5e1; margin-bottom: 8px; display: block; }
+            .modern-dropdown { margin-bottom: 20px; }
+            
+            /* Fixed dropdown styles */
+            .modern-dropdown .Select-control { background: white !important; color: #000000 !important; border: 1px solid #e2e8f0 !important; }
+            .modern-dropdown .Select-placeholder { color: #000000 !important; }
+            .modern-dropdown .Select-value { color: #000000 !important; }
+            .modern-dropdown .Select-value-label { color: #000000 !important; }
+            .modern-dropdown .Select-input { color: #000000 !important; }
+            .modern-dropdown .Select-menu-outer { background: white !important; border: 1px solid #e2e8f0 !important; }
+            .modern-dropdown .Select-menu { background: white !important; }
+            .modern-dropdown .Select-option { color: #000000 !important; background: white !important; padding: 8px 12px !important; font-weight: 600 !important; }
+            .modern-dropdown .Select-option:hover { background: #f1f5f9 !important; color: #000000 !important; }
+            .modern-dropdown .Select-option.is-focused { background: #f1f5f9 !important; color: #000000 !important; }
+            .modern-dropdown .Select-option.is-selected { background: #3b82f6 !important; color: white !important; }
+            .modern-dropdown div[class*="singleValue"] { color: #000000 !important; }
+            .modern-dropdown div[class*="option"] { color: #000000 !important; }
+            
+            .button-grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 30px; }
+            .btn-primary { background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+            .btn-secondary { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+            .btn-tertiary { background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+            .btn-primary:hover, .btn-secondary:hover, .btn-tertiary:hover { transform: translateY(-1px); }
+            .status-section { background: rgba(255,255,255,0.05); padding: 20px; border-radius: 12px; }
+            .status-box { }
+            .status-item { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem; }
+            .status-item span:first-child { opacity: 0.7; }
+            .status-item span:last-child { font-weight: 600; }
+            
+            /* Main Content */
+            .main-content { flex: 1; padding: 30px; overflow-y: auto; }
+            .main-header { text-align: center; margin-bottom: 30px; }
+            .main-title { font-size: 2.5rem; font-weight: 800; color: #1e293b; margin-bottom: 8px; }
+            .main-subtitle { font-size: 1.1rem; color: #64748b; margin-bottom: 20px; }
+            .badge-container { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
+            .badge { background: linear-gradient(135deg, #ff9900, #ff6600); color: white; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; }
+            
+            /* KPI Grid */
+            .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px; }
+            .kpi-card { background: white; border-radius: 16px; padding: 25px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); transition: all 0.3s ease; display: flex; align-items: center; gap: 20px; }
+            .kpi-card:hover { transform: translateY(-4px); box-shadow: 0 8px 30px rgba(0,0,0,0.12); }
+            .kpi-icon { font-size: 2.5rem; }
+            .kpi-value { font-size: 2rem; font-weight: 700; margin-bottom: 4px; }
+            .kpi-label { font-size: 0.9rem; color: #64748b; font-weight: 500; }
+            .revenue .kpi-value { color: #10b981; }
+            .traffic .kpi-value { color: #3b82f6; }
+            .toll .kpi-value { color: #ef4444; }
+            .efficiency .kpi-value { color: #f59e0b; }
+            
+            /* Charts */
+            .charts-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 30px; }
+            .chart-card { background: white; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); overflow: hidden; }
+            .chart { }
+            
+            /* Map */
+            .map-section { background: white; border-radius: 16px; padding: 25px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+            .map-title { font-size: 1.3rem; font-weight: 700; color: #1e293b; margin-bottom: 20px; text-align: center; }
+            .map-chart { }
+            
+            /* Responsive */
+            @media (max-width: 1200px) {
+                .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+            }
+            @media (max-width: 768px) {
+                .app-container { flex-direction: column; }
+                .sidebar { width: 100%; }
+                .kpi-grid, .charts-grid { grid-template-columns: 1fr; }
+                .main-title { font-size: 2rem; }
+            }
+        </style>
+    </head>
+    <body>
+        {%app_entry%}
+        <footer>
+            {%config%}
+            {%scripts%}
+            {%renderer%}
+        </footer>
+    </body>
+</html>
+'''
 
 # Global variables
 simulation_running = False
@@ -374,109 +481,4 @@ def run_simulation_background(scenario):
         time.sleep(1)
 
 if __name__ == '__main__':
-    # Fixed CSS with proper dropdown styling
-    app.index_string = '''
-    <!DOCTYPE html>
-    <html>
-        <head>
-            {%metas%}
-            <title>{%title%}</title>
-            {%favicon%}
-            {%css%}
-            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-            <style>
-                * { margin: 0; padding: 0; box-sizing: border-box; }
-                body { font-family: 'Inter', sans-serif; background: #f8fafc; }
-                
-                .app-container { display: flex; min-height: 100vh; }
-                
-                /* Sidebar */
-                .sidebar { width: 280px; background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%); color: white; padding: 0; box-shadow: 4px 0 20px rgba(0,0,0,0.1); }
-                .sidebar-header { padding: 30px 25px; border-bottom: 1px solid rgba(255,255,255,0.1); }
-                .logo-icon { font-size: 2.5rem; margin-bottom: 15px; }
-                .sidebar-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 5px; }
-                .sidebar-subtitle { font-size: 0.9rem; opacity: 0.7; }
-                .sidebar-content { padding: 25px; }
-                .section-title { font-size: 1rem; font-weight: 600; margin-bottom: 15px; color: #e2e8f0; }
-                .input-label { font-size: 0.85rem; color: #cbd5e1; margin-bottom: 8px; display: block; }
-                .modern-dropdown { margin-bottom: 20px; }
-                
-                /* Fixed dropdown styles */
-                .modern-dropdown .Select-control { background: white !important; color: #000000 !important; border: 1px solid #e2e8f0 !important; }
-                .modern-dropdown .Select-placeholder { color: #000000 !important; }
-                .modern-dropdown .Select-value { color: #000000 !important; }
-                .modern-dropdown .Select-value-label { color: #000000 !important; }
-                .modern-dropdown .Select-input { color: #000000 !important; }
-                .modern-dropdown .Select-menu-outer { background: white !important; border: 1px solid #e2e8f0 !important; }
-                .modern-dropdown .Select-menu { background: white !important; }
-                .modern-dropdown .Select-option { color: #000000 !important; background: white !important; padding: 8px 12px !important; font-weight: 600 !important; }
-                .modern-dropdown .Select-option:hover { background: #f1f5f9 !important; color: #000000 !important; }
-                .modern-dropdown .Select-option.is-focused { background: #f1f5f9 !important; color: #000000 !important; }
-                .modern-dropdown .Select-option.is-selected { background: #3b82f6 !important; color: white !important; }
-                .modern-dropdown div[class*="singleValue"] { color: #000000 !important; }
-                .modern-dropdown div[class*="option"] { color: #000000 !important; }
-                
-                .button-grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 30px; }
-                .btn-primary { background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-                .btn-secondary { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-                .btn-tertiary { background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-                .btn-primary:hover, .btn-secondary:hover, .btn-tertiary:hover { transform: translateY(-1px); }
-                .status-section { background: rgba(255,255,255,0.05); padding: 20px; border-radius: 12px; }
-                .status-box { }
-                .status-item { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem; }
-                .status-item span:first-child { opacity: 0.7; }
-                .status-item span:last-child { font-weight: 600; }
-                
-                /* Main Content */
-                .main-content { flex: 1; padding: 30px; overflow-y: auto; }
-                .main-header { text-align: center; margin-bottom: 30px; }
-                .main-title { font-size: 2.5rem; font-weight: 800; color: #1e293b; margin-bottom: 8px; }
-                .main-subtitle { font-size: 1.1rem; color: #64748b; margin-bottom: 20px; }
-                .badge-container { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
-                .badge { background: linear-gradient(135deg, #ff9900, #ff6600); color: white; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; }
-                
-                /* KPI Grid */
-                .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px; }
-                .kpi-card { background: white; border-radius: 16px; padding: 25px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); transition: all 0.3s ease; display: flex; align-items: center; gap: 20px; }
-                .kpi-card:hover { transform: translateY(-4px); box-shadow: 0 8px 30px rgba(0,0,0,0.12); }
-                .kpi-icon { font-size: 2.5rem; }
-                .kpi-value { font-size: 2rem; font-weight: 700; margin-bottom: 4px; }
-                .kpi-label { font-size: 0.9rem; color: #64748b; font-weight: 500; }
-                .revenue .kpi-value { color: #10b981; }
-                .traffic .kpi-value { color: #3b82f6; }
-                .toll .kpi-value { color: #ef4444; }
-                .efficiency .kpi-value { color: #f59e0b; }
-                
-                /* Charts */
-                .charts-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 30px; }
-                .chart-card { background: white; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); overflow: hidden; }
-                .chart { }
-                
-                /* Map */
-                .map-section { background: white; border-radius: 16px; padding: 25px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
-                .map-title { font-size: 1.3rem; font-weight: 700; color: #1e293b; margin-bottom: 20px; text-align: center; }
-                .map-chart { }
-                
-                /* Responsive */
-                @media (max-width: 1200px) {
-                    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
-                }
-                @media (max-width: 768px) {
-                    .app-container { flex-direction: column; }
-                    .sidebar { width: 100%; }
-                    .kpi-grid, .charts-grid { grid-template-columns: 1fr; }
-                    .main-title { font-size: 2rem; }
-                }
-            </style>
-        </head>
-        <body>
-            {%app_entry%}
-            <footer>
-                {%config%}
-                {%scripts%}
-                {%renderer%}
-            </footer>
-        </body>
-    </html>
-    '''
     app.run(debug=True, host='0.0.0.0', port=8050)

@@ -13,12 +13,16 @@ class TrainedPricingModel:
         self.load_trained_model()
         
     def load_trained_model(self):
-        """Load the trained ML model with fallback"""
+        """Load the trained ML model with S3 support"""
         try:
-            # Check if model file exists first
+            # Try to download latest model from S3
+            from model_manager import model_manager
+            model_manager.download_latest_model()
+            
+            # Check if model file exists
             import os
             if not os.path.exists('models/toll_pricing_model.pkl'):
-                print("⚠️ No pre-trained model found, using rule-based pricing")
+                print("⚠️ No model available, using rule-based pricing")
                 self.ml_model = None
                 return
             
@@ -35,7 +39,8 @@ class TrainedPricingModel:
             
             # Try to load existing model
             if self.ml_model.load_model('models/toll_pricing_model.pkl'):
-                print("✅ Loaded trained ML model")
+                model_info = model_manager.get_model_info()
+                print(f"✅ Loaded ML model from {model_info['source']}")
             else:
                 print("⚠️ Model loading failed, using rule-based pricing")
                 self.ml_model = None

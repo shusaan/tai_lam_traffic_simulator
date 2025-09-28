@@ -1,39 +1,51 @@
-FROM python:3.10-slim
+# Multi-stage build for production optimization
+FROM python:3.10-slim AS builder
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+COPY requirements-minimal.txt /tmp/requirements.txt
+RUN pip install --user --no-cache-dir -r /tmp/requirements.txt
+
+# Production stage
+FROM python:3.10-slim AS production
 
 # Production optimizations
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app:/app/src
+ENV PORT=8050
 
 WORKDIR /app
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user for security
 RUN groupadd -r appuser && useradd -r -g appuser appuser
 
-# Install Python dependencies
-COPY requirements-minimal.txt ./requirements.txt
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+# Copy Python packages from builder and set ownership
+COPY --from=builder --chown=appuser:appuser /root/.local /home/appuser/.local
 
-# Copy application code and pre-trained model
-COPY src/ ./src/
-COPY models/ ./models/
-COPY *.csv ./
+# Set PATH for appuser
+ENV PATH=/home/appuser/.local/bin:$PATH
 
-# Set ownership and permissions
-RUN chown -R appuser:appuser /app
+# Copy application code (no models - loaded from S3)
+COPY --chown=appuser:appuser src/ ./src/
+COPY --chown=appuser:appuser *.csv ./
+
+# Create directories with proper permissions
+RUN mkdir -p /app/models /app/logs && \
+    chown -R appuser:appuser /app
+
 USER appuser
 
-EXPOSE 8050
+EXPOSE $PORT
 
-# Health check (removed curl dependency)
-# HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-#     CMD curl -f http://localhost:8050/ || exit 1
+# Health check
+# HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+#     CMD python -c "import requests; requests.get('http://localhost:$PORT/health', timeout=5)" || exit 1
 
-CMD ["python", "/app/src/dashboard/modern_app.py"]
+# Production: Use Gunicorn WSGI server
+CMD ["gunicorn", "--bind", "0.0.0.0:8050", "--workers", "2", "--timeout", "120", "--access-logfile", "-", "--error-logfile", "-", "src.dashboard.wsgi:server"]
