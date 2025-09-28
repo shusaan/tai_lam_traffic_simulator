@@ -9,6 +9,10 @@ from sklearn.metrics import mean_absolute_error, r2_score
 import pickle
 import os
 from datetime import datetime
+import sys
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from config import ROADS, TOLL_CONFIG, REVENUE_TARGET_HOURLY
 
 class TollPricingMLModel:
     """ML model for dynamic toll pricing using historical HK data"""
@@ -31,9 +35,9 @@ class TollPricingMLModel:
         df['day_of_week'] = df['timestamp'].dt.dayofweek
         df['is_weekend'] = df['day_of_week'].isin([5, 6]).astype(int)
         
-        # Create congestion ratios (normalize by capacity)
-        tai_lam_capacity = 3000  # vehicles/hour
-        nt_capacity = 3500
+        # Create congestion ratios (normalize by capacity from config)
+        tai_lam_capacity = ROADS['tai_lam_tunnel'].capacity
+        nt_capacity = ROADS['nt_circular_road'].capacity
         
         df['tai_lam_congestion'] = df['tai_lam'] / tai_lam_capacity
         df['nt_congestion'] = df['nt_circular'] / nt_capacity
@@ -49,8 +53,8 @@ class TollPricingMLModel:
     def create_optimal_toll_labels(self, df):
         """Create optimal toll price labels based on traffic patterns"""
         
-        # Base toll price
-        base_toll = 8.0
+        # Base toll price from config
+        base_toll = TOLL_CONFIG.base_price
         
         # Calculate optimal toll based on congestion and demand
         optimal_toll = np.full(len(df), base_toll)
@@ -71,8 +75,8 @@ class TollPricingMLModel:
         night_time = (df['hour'] >= 22) | (df['hour'] <= 5)
         optimal_toll[night_time] = base_toll * 0.7  # Night discount
         
-        # Apply constraints (HK$5 - HK$25)
-        optimal_toll = np.clip(optimal_toll, 5.0, 25.0)
+        # Apply constraints from config
+        optimal_toll = np.clip(optimal_toll, TOLL_CONFIG.min_price, TOLL_CONFIG.max_price)
         
         return optimal_toll
     
@@ -171,8 +175,8 @@ class TollPricingMLModel:
         features_scaled = self.scaler.transform(features)
         predicted_toll = self.model.predict(features_scaled)[0]
         
-        # Apply constraints
-        predicted_toll = np.clip(predicted_toll, 5.0, 25.0)
+        # Apply constraints from config
+        predicted_toll = np.clip(predicted_toll, TOLL_CONFIG.min_price, TOLL_CONFIG.max_price)
         
         return float(predicted_toll)
     
