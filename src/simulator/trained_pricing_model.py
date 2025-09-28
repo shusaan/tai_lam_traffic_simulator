@@ -13,20 +13,38 @@ class TrainedPricingModel:
         self.load_trained_model()
         
     def load_trained_model(self):
-        """Load the trained ML model"""
+        """Load the trained ML model with fallback"""
         try:
+            # Check if model file exists first
+            import os
+            if not os.path.exists('models/toll_pricing_model.pkl'):
+                print("⚠️ No pre-trained model found, using rule-based pricing")
+                self.ml_model = None
+                return
+            
+            # Suppress warnings for production
+            import warnings
+            warnings.filterwarnings('ignore')
+            
+            # Try importing ML components
+            import numpy
+            import sklearn
             from ml_trainer import TollPricingMLModel
+            
             self.ml_model = TollPricingMLModel()
             
             # Try to load existing model
             if self.ml_model.load_model('models/toll_pricing_model.pkl'):
                 print("✅ Loaded trained ML model")
             else:
-                print("⚠️ No trained model found, using simple rules")
+                print("⚠️ Model loading failed, using rule-based pricing")
                 self.ml_model = None
                 
+        except ImportError as e:
+            print(f"⚠️ ML dependencies unavailable, using rule-based pricing")
+            self.ml_model = None
         except Exception as e:
-            print(f"❌ Error loading ML model: {e}")
+            print(f"⚠️ Model error, using rule-based pricing")
             self.ml_model = None
     
     def get_price_recommendation(self, state):

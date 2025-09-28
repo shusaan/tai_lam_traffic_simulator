@@ -14,7 +14,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from simulator.traffic_simulator import TrafficSimulator
 from simulator.trained_pricing_model import TrainedPricingModel as HybridPricingModel
 from simple_data_processor import TrafficDataProcessor
-from config import SCENARIOS, ROADS
+from config import SCENARIOS, ROADS, TOLL_CONFIG
 
 # Initialize components
 simulator = TrafficSimulator()
@@ -186,7 +186,7 @@ def update_simulation(n_intervals, start_clicks, stop_clicks, reset_clicks, scen
 )
 def update_kpis(data):
     if not data:
-        return "HK$0", "0", "HK$8.00", "0%"
+        return "HK$0", "0", f"HK${TOLL_CONFIG.base_price:.2f}", "0%"
     
     latest = data[-1]
     revenue = f"HK${latest['revenue']:.0f}"
@@ -249,7 +249,7 @@ def update_toll_price_chart(data):
         paper_bgcolor='rgba(0,0,0,0)',
         font=dict(family='Inter', size=12),
         margin=dict(l=20, r=20, t=40, b=20),
-        yaxis=dict(range=[5, 25])
+        yaxis=dict(range=[TOLL_CONFIG.min_price, TOLL_CONFIG.max_price])
     )
     return fig
 

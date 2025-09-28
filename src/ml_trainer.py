@@ -161,17 +161,20 @@ class TollPricingMLModel:
             print("⚠️ Model not trained yet. Using default toll.")
             return 8.0
 
-        # Prepare input features
-        features = np.array([
-            traffic_state.get('tunnel_congestion', 0.5),
-            traffic_state.get('nt_congestion', 0.5),
-            traffic_state.get('time_of_day', 12),
-            traffic_state.get('day_of_week', 1),
-            1 if traffic_state.get('day_of_week', 1) in [5, 6] else 0,  # is_weekend
-            1 if traffic_state.get('is_peak', False) else 0,
-            1 if 7 <= traffic_state.get('time_of_day', 12) <= 9 else 0,  # morning_peak
-            1 if 17 <= traffic_state.get('time_of_day', 12) <= 19 else 0  # evening_peak
-        ]).reshape(1, -1)
+        # Prepare input features with proper column names
+        import pandas as pd
+        features_dict = {
+            'tai_lam_congestion': [traffic_state.get('tunnel_congestion', 0.5)],
+            'nt_congestion': [traffic_state.get('nt_congestion', 0.5)],
+            'hour': [traffic_state.get('time_of_day', 12)],
+            'day_of_week': [traffic_state.get('day_of_week', 1)],
+            'is_weekend': [1 if traffic_state.get('day_of_week', 1) in [5, 6] else 0],
+            'is_peak': [1 if traffic_state.get('is_peak', False) else 0],
+            'is_morning_peak': [1 if 7 <= traffic_state.get('time_of_day', 12) <= 9 else 0],
+            'is_evening_peak': [1 if 17 <= traffic_state.get('time_of_day', 12) <= 19 else 0]
+        }
+        features_df = pd.DataFrame(features_dict)
+        features = features_df.values
 
         # Scale and predict
         features_scaled = self.scaler.transform(features)

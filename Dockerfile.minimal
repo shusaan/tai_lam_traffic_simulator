@@ -1,19 +1,39 @@
 FROM python:3.10-slim
 
+# Production optimizations
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app:/app/src
+
 WORKDIR /app
 
-RUN mkdir -p /root/.cache/pip
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
 
+# Create non-root user for security
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# Install Python dependencies
 COPY requirements-minimal.txt ./requirements.txt
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --upgrade pip && \
-    pip install -r requirements.txt
+    pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
+# Copy application code and pre-trained model
 COPY src/ ./src/
-COPY *.py ./
+COPY models/ ./models/
+COPY *.csv ./
+
+# Set ownership and permissions
+RUN chown -R appuser:appuser /app
+USER appuser
 
 EXPOSE 8050
 
-ENV PYTHONPATH=/app:/app/src
+# Health check (removed curl dependency)
+# HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+#     CMD curl -f http://localhost:8050/ || exit 1
 
 CMD ["python", "/app/src/dashboard/modern_app.py"]
