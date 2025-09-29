@@ -183,7 +183,7 @@ app.layout = html.Div([
             html.H1("🚗 Tai Lam AI Traffic Optimizer", className="main-title"),
             html.P("AWS-Powered Dynamic Toll Pricing System", className="main-subtitle"),
             html.Div([
-                html.Span("🏆 AWS Hackathon 2024", className="badge"),
+                html.Span("🏆 AWS Hackathon 2025", className="badge"),
                 html.Span("⚡ Real-time AI", className="badge"),
                 html.Span("🇭🇰 Hong Kong", className="badge")
             ], className="badge-container")
@@ -373,7 +373,7 @@ def update_congestion_heatmap(data):
         fig.add_trace(go.Bar(
             x=[ROADS[road].name for road in road_names],
             y=congestion_levels,
-            marker_color=['#FF6B6B' if c > 0.8 else '#FFD93D' if c > 0.5 else '#6BCF7F' for c in congestion_levels],
+            marker_color=['#DC2626' if c > 0.8 else '#EA580C' if c > 0.6 else '#F59E0B' if c > 0.4 else '#16A34A' for c in congestion_levels],
             text=[f'{c:.1%}' for c in congestion_levels],
             textposition='auto'
         ))
@@ -421,7 +421,7 @@ def update_traffic_map(data):
         
         for road_name, road_config in ROADS.items():
             congestion = roads_data.get(road_name, {}).get('congestion', 0)
-            color = '#FF6B6B' if congestion > 0.8 else '#FFD93D' if congestion > 0.5 else '#6BCF7F'
+            color = '#1E40AF' if congestion > 0.8 else '#3B82F6' if congestion > 0.5 else '#60A5FA'
             width = max(3, congestion * 12)
             
             lats = [coord[0] for coord in road_config.coordinates]
