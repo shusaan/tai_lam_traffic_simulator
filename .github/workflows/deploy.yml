@@ -58,14 +58,19 @@ jobs:
     - name: Update ECS service
       run: |
         # Update task definition with new image
-        TASK_DEFINITION=$(aws ecs describe-task-definition --task-definition tai-lam-poc-task --query taskDefinition)
-        
-        # Update image URL in task definition
         NEW_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
-        UPDATED_TASK_DEFINITION=$(echo $TASK_DEFINITION | jq --arg IMAGE "$NEW_IMAGE" '.containerDefinitions[0].image = $IMAGE | del(.taskDefinitionArn) | del(.revision) | del(.status) | del(.requiresAttributes) | del(.placementConstraints) | del(.compatibilities) | del(.registeredAt) | del(.registeredBy)')
+        
+        # Get current task definition
+        TASK_DEFINITION=$(aws ecs describe-task-definition --task-definition tai-lam-poc-task --query taskDefinition --output json)
+        
+        # Create new task definition with updated image
+        echo $TASK_DEFINITION | jq --arg IMAGE "$NEW_IMAGE" '
+          .containerDefinitions[0].image = $IMAGE |
+          del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .placementConstraints, .compatibilities, .registeredAt, .registeredBy)
+        ' > new-task-definition.json
         
         # Register new task definition
-        NEW_TASK_DEF_ARN=$(echo $UPDATED_TASK_DEFINITION | aws ecs register-task-definition --cli-input-json file:///dev/stdin --query 'taskDefinition.taskDefinitionArn' --output text)
+        NEW_TASK_DEF_ARN=$(aws ecs register-task-definition --cli-input-json file://new-task-definition.json --query 'taskDefinition.taskDefinitionArn' --output text)
         
         # Update ECS service
         aws ecs update-service \

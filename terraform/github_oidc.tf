@@ -57,14 +57,21 @@ resource "aws_iam_policy" "github_actions_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid = "ECSDeployment"
+        Sid = "ECSDescribeList"
         Effect = "Allow"
         Action = [
           "ecs:DescribeTaskDefinition",
-          "ecs:RegisterTaskDefinition",
-          "ecs:UpdateService",
           "ecs:DescribeServices",
           "ecs:ListTaskDefinitions"
+        ]
+        Resource = "*"
+      },
+      {
+        Sid = "ECSDeployment"
+        Effect = "Allow"
+        Action = [
+          "ecs:RegisterTaskDefinition",
+          "ecs:UpdateService"
         ]
         Resource = [
           "arn:aws:ecs:${var.aws_region}:*:task-definition/${var.project_name}-task",
