@@ -7,6 +7,7 @@ import pandas as pd
 from datetime import datetime
 import threading
 import time
+from zoneinfo import ZoneInfo
 
 import sys
 import os
@@ -447,7 +448,9 @@ def update_traffic_map(data):
 
 def get_status_display():
     status = "🟢 Running" if simulation_running else "🔴 Stopped"
-    time_str = simulator.current_time.strftime("%H:%M:%S")
+    # Use Hong Kong timezone
+    hk_time = datetime.now(ZoneInfo("Asia/Hong_Kong"))
+    time_str = f"{hk_time.strftime('%H:%M:%S')} HKT"
     toll = f"HK${simulator.toll_price:.2f}"
     revenue = f"HK${simulator.revenue:.2f}"
     
