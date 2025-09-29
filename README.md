@@ -11,13 +11,13 @@ This system uses real Hong Kong traffic data to train ML models that dynamically
 ## 🏗️ Architecture
 
 ```
-Internet → ALB → ECS Fargate → S3 Models
-    ↓         ↓        ↓           ↓
-Route53   Target   Container   DynamoDB
-(DNS)     Group    (2 tasks)   (Data)
+Internet → ALB (Public) → ECS Fargate (Private) → S3 Models
+    ↓         ↓              ↓                      ↓
+Route53   Target         NAT Gateway            DynamoDB
+(DNS)     Group         (Outbound)             (Data)
 ```
 
-**AWS Services**: ECS Fargate, ALB, S3, DynamoDB, Lambda, API Gateway, CloudWatch
+**AWS Services**: ECS Fargate, ALB, S3, DynamoDB, Lambda, API Gateway, NAT Gateway, CloudWatch (Hong Kong region)
 
 ## 🚀 Quick Start
 
@@ -39,7 +39,7 @@ docker-compose up --build
 #### Configure AWS CLI
 ```bash
 aws configure
-# Region: us-east-1
+# Region: ap-east-1  # Hong Kong
 # Output: json
 ```
 
@@ -52,216 +52,248 @@ aws configure
 4. **Attach policy** (JSON) - **Production-Ready Minimal Permissions**:
 ```json
 {
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "TerraformStateManagement",
-      "Effect": "Allow",
-      "Action": [
-        "s3:GetObject",
-        "s3:PutObject",
-        "s3:DeleteObject",
-        "s3:ListBucket",
-        "dynamodb:GetItem",
-        "dynamodb:PutItem",
-        "dynamodb:DeleteItem"
-      ],
-      "Resource": [
-        "arn:aws:s3:::terraform-state-*",
-        "arn:aws:s3:::terraform-state-*/*",
-        "arn:aws:dynamodb:*:*:table/terraform-locks"
-      ]
-    },
-    {
-      "Sid": "ECSInfrastructure",
-      "Effect": "Allow",
-      "Action": [
-        "ecs:CreateCluster",
-        "ecs:DeleteCluster",
-        "ecs:DescribeClusters",
-        "ecs:CreateService",
-        "ecs:DeleteService",
-        "ecs:UpdateService",
-        "ecs:DescribeServices",
-        "ecs:RegisterTaskDefinition",
-        "ecs:DeregisterTaskDefinition",
-        "ecs:DescribeTaskDefinition"
-      ],
-      "Resource": [
-        "arn:aws:ecs:us-east-1:*:cluster/tai-lam-poc-*",
-        "arn:aws:ecs:us-east-1:*:service/tai-lam-poc-*/*",
-        "arn:aws:ecs:us-east-1:*:task-definition/tai-lam-poc-*:*"
-      ]
-    },
-    {
-      "Sid": "NetworkingResources",
-      "Effect": "Allow",
-      "Action": [
-        "ec2:CreateVpc",
-        "ec2:DeleteVpc",
-        "ec2:DescribeVpcs",
-        "ec2:CreateSubnet",
-        "ec2:DeleteSubnet",
-        "ec2:DescribeSubnets",
-        "ec2:CreateInternetGateway",
-        "ec2:DeleteInternetGateway",
-        "ec2:AttachInternetGateway",
-        "ec2:DetachInternetGateway",
-        "ec2:CreateRouteTable",
-        "ec2:DeleteRouteTable",
-        "ec2:CreateRoute",
-        "ec2:DeleteRoute",
-        "ec2:AssociateRouteTable",
-        "ec2:DisassociateRouteTable",
-        "ec2:CreateSecurityGroup",
-        "ec2:DeleteSecurityGroup",
-        "ec2:AuthorizeSecurityGroupIngress",
-        "ec2:AuthorizeSecurityGroupEgress",
-        "ec2:RevokeSecurityGroupIngress",
-        "ec2:RevokeSecurityGroupEgress",
-        "ec2:DescribeSecurityGroups",
-        "ec2:DescribeAvailabilityZones",
-        "ec2:DescribeInternetGateways",
-        "ec2:DescribeRouteTables",
-        "ec2:CreateTags",
-        "ec2:DescribeTags"
-      ],
-      "Resource": "*"
-    },
-    {
-      "Sid": "LoadBalancerResources",
-      "Effect": "Allow",
-      "Action": [
-        "elasticloadbalancing:CreateLoadBalancer",
-        "elasticloadbalancing:DeleteLoadBalancer",
-        "elasticloadbalancing:DescribeLoadBalancers",
-        "elasticloadbalancing:CreateTargetGroup",
-        "elasticloadbalancing:DeleteTargetGroup",
-        "elasticloadbalancing:DescribeTargetGroups",
-        "elasticloadbalancing:CreateListener",
-        "elasticloadbalancing:DeleteListener",
-        "elasticloadbalancing:DescribeListeners",
-        "elasticloadbalancing:ModifyTargetGroupAttributes",
-        "elasticloadbalancing:AddTags"
-      ],
-      "Resource": "*"
-    },
-    {
-      "Sid": "S3ModelStorage",
-      "Effect": "Allow",
-      "Action": [
-        "s3:CreateBucket",
-        "s3:DeleteBucket",
-        "s3:GetBucketVersioning",
-        "s3:PutBucketVersioning",
-        "s3:GetBucketEncryption",
-        "s3:PutBucketEncryption",
-        "s3:GetBucketTagging",
-        "s3:PutBucketTagging",
-        "s3:ListBucket"
-      ],
-      "Resource": "arn:aws:s3:::tai-lam-poc-models"
-    },
-    {
-      "Sid": "DynamoDBTables",
-      "Effect": "Allow",
-      "Action": [
-        "dynamodb:CreateTable",
-        "dynamodb:DeleteTable",
-        "dynamodb:DescribeTable",
-        "dynamodb:UpdateTable",
-        "dynamodb:TagResource",
-        "dynamodb:ListTagsOfResource"
-      ],
-      "Resource": [
-        "arn:aws:dynamodb:us-east-1:*:table/tai-lam-poc-traffic",
-        "arn:aws:dynamodb:us-east-1:*:table/tai-lam-poc-tolls"
-      ]
-    },
-    {
-      "Sid": "IAMRoleManagement",
-      "Effect": "Allow",
-      "Action": [
-        "iam:CreateRole",
-        "iam:DeleteRole",
-        "iam:GetRole",
-        "iam:CreatePolicy",
-        "iam:DeletePolicy",
-        "iam:GetPolicy",
-        "iam:AttachRolePolicy",
-        "iam:DetachRolePolicy",
-        "iam:CreateUser",
-        "iam:DeleteUser",
-        "iam:GetUser",
-        "iam:CreateAccessKey",
-        "iam:DeleteAccessKey",
-        "iam:AttachUserPolicy",
-        "iam:DetachUserPolicy",
-        "iam:TagRole",
-        "iam:TagUser",
-        "iam:TagPolicy",
-        "iam:PassRole"
-      ],
-      "Resource": [
-        "arn:aws:iam::*:role/tai-lam-poc-*",
-        "arn:aws:iam::*:policy/tai-lam-poc-*",
-        "arn:aws:iam::*:policy/TaiLam*",
-        "arn:aws:iam::*:user/tailam_*"
-      ]
-    },
-    {
-      "Sid": "LambdaFunctions",
-      "Effect": "Allow",
-      "Action": [
-        "lambda:CreateFunction",
-        "lambda:DeleteFunction",
-        "lambda:GetFunction",
-        "lambda:UpdateFunctionCode",
-        "lambda:UpdateFunctionConfiguration",
-        "lambda:AddPermission",
-        "lambda:RemovePermission",
-        "lambda:TagResource"
-      ],
-      "Resource": "arn:aws:lambda:us-east-1:*:function:tai-lam-poc-*"
-    },
-    {
-      "Sid": "APIGateway",
-      "Effect": "Allow",
-      "Action": [
-        "apigateway:POST",
-        "apigateway:GET",
-        "apigateway:PUT",
-        "apigateway:DELETE",
-        "apigateway:PATCH"
-      ],
-      "Resource": "arn:aws:apigateway:us-east-1::/restapis*"
-    },
-    {
-      "Sid": "CloudWatchLogs",
-      "Effect": "Allow",
-      "Action": [
-        "logs:CreateLogGroup",
-        "logs:DeleteLogGroup",
-        "logs:DescribeLogGroups",
-        "logs:PutRetentionPolicy",
-        "logs:TagLogGroup"
-      ],
-      "Resource": "arn:aws:logs:us-east-1:*:log-group:/ecs/tai-lam-poc*"
-    },
-    {
-      "Sid": "Route53Optional",
-      "Effect": "Allow",
-      "Action": [
-        "route53:CreateHostedZone",
-        "route53:DeleteHostedZone",
-        "route53:GetHostedZone",
-        "route53:ChangeResourceRecordSets",
-        "route53:GetChange",
-        "route53:ListResourceRecordSets"
-      ],
-      "Resource": "*"
-    }
-  ]
+	"Version": "2012-10-17",
+	"Statement": [
+		{
+			"Sid": "TerraformStateManagement",
+			"Effect": "Allow",
+			"Action": [
+				"s3:GetObject",
+				"s3:PutObject",
+				"s3:DeleteObject",
+				"s3:ListBucket",
+				"dynamodb:GetItem",
+				"dynamodb:PutItem",
+				"dynamodb:DeleteItem"
+			],
+			"Resource": [
+				"arn:aws:s3:::tai-lam-terraform-state-hk",
+				"arn:aws:s3:::tai-lam-terraform-state-hk/*"
+			]
+		},
+		{
+			"Sid": "ECSInfrastructure",
+			"Effect": "Allow",
+			"Action": [
+				"ecs:CreateCluster",
+				"ecs:DeleteCluster",
+				"ecs:DescribeClusters",
+				"ecs:CreateService",
+				"ecs:DeleteService",
+				"ecs:UpdateService",
+				"ecs:DescribeServices",
+				"ecs:RegisterTaskDefinition",
+				"ecs:DeregisterTaskDefinition",
+				"ecs:DescribeTaskDefinition",
+				"ecs:TagResource"
+			],
+			"Resource": [
+				"arn:aws:ecs:ap-east-1:*:cluster/tai-lam-poc-*",
+				"arn:aws:ecs:ap-east-1:*:service/tai-lam-poc-*/*",
+				"arn:aws:ecs:ap-east-1:*:task-definition/tai-lam-poc-*:*"
+			]
+		},
+		{
+			"Sid": "NetworkingResources",
+			"Effect": "Allow",
+			"Action": [
+				"ec2:DescribeVpcs",
+				"ec2:DescribeNetworkInterfaces",
+				"ec2:CreateSubnet",
+				"ec2:DeleteSubnet",
+				"ec2:DescribeSubnets",
+				"ec2:CreateInternetGateway",
+				"ec2:DeleteInternetGateway",
+				"ec2:AttachInternetGateway",
+				"ec2:DetachInternetGateway",
+				"ec2:CreateRouteTable",
+				"ec2:DeleteRouteTable",
+				"ec2:CreateRoute",
+				"ec2:DeleteRoute",
+				"ec2:AssociateRouteTable",
+				"ec2:DisassociateRouteTable",
+				"ec2:DisassociateAddress",
+				"ec2:CreateSecurityGroup",
+				"ec2:DeleteSecurityGroup",
+				"ec2:AuthorizeSecurityGroupIngress",
+				"ec2:AuthorizeSecurityGroupEgress",
+				"ec2:RevokeSecurityGroupIngress",
+				"ec2:RevokeSecurityGroupEgress",
+				"ec2:DescribeSecurityGroups",
+				"ec2:DescribeAvailabilityZones",
+				"ec2:DescribeInternetGateways",
+				"ec2:DescribeRouteTables",
+				"ec2:CreateTags",
+				"ec2:DescribeTags",
+				"ec2:AllocateAddress",
+				"ec2:ReleaseAddress",
+				"ec2:DescribeAddresses",
+				"ec2:DescribeVpcAttribute",
+				"ec2:DescribeNatGateways",
+				"ec2:DeleteNatGateway",
+				"ec2:DescribeAddressesAttribute",
+				"ec2:DescribeAccountAttributes"
+			],
+			"Resource": "*"
+		},
+		{
+			"Sid": "LoadBalancerResources",
+			"Effect": "Allow",
+			"Action": [
+				"elasticloadbalancing:CreateLoadBalancer",
+				"elasticloadbalancing:DeleteLoadBalancer",
+				"elasticloadbalancing:DescribeLoadBalancers",
+				"elasticloadbalancing:CreateTargetGroup",
+				"elasticloadbalancing:DeleteTargetGroup",
+				"elasticloadbalancing:DescribeTargetGroups",
+				"elasticloadbalancing:DescribeTargetGroupAttributes",
+				"elasticloadbalancing:CreateListener",
+				"elasticloadbalancing:DeleteListener",
+				"elasticloadbalancing:DescribeListeners",
+				"elasticloadbalancing:ModifyTargetGroupAttributes",
+				"elasticloadbalancing:AddTags",
+				"elasticloadbalancing:DescribeTags",
+				"elasticloadbalancing:ModifyLoadBalancerAttributes",
+				"elasticloadbalancing:DescribeLoadBalancerAttributes",
+				"elasticloadbalancing:DescribeListenerAttributes"
+			],
+			"Resource": "*"
+		},
+		{
+			"Sid": "S3ModelStorage",
+			"Effect": "Allow",
+			"Action": [
+				"s3:GetObject",
+				"s3:PutObject",
+				"s3:DeleteObject",
+				"s3:AbortMultipartUpload",
+				"s3:ListMultipartUploadParts"
+			],
+			"Resource": "arn:aws:s3:::tai-lam-poc-models/*"
+		},
+		    {
+			"Sid": "ListAndMultipartBucketActions",
+			"Effect": "Allow",
+			"Action": [
+				"s3:ListBucket",
+				"s3:ListBucketMultipartUploads"
+			],
+			"Resource": "arn:aws:s3:::tai-lam-poc-models"
+			},
+		{
+			"Sid": "DynamoDBTables",
+			"Effect": "Allow",
+			"Action": [
+				"dynamodb:CreateTable",
+				"dynamodb:DeleteTable",
+				"dynamodb:DescribeTable",
+				"dynamodb:UpdateTable",
+				"dynamodb:TagResource",
+				"dynamodb:ListTagsOfResource",
+				"dynamodb:DescribeContinuousBackups",
+				"dynamodb:DescribeTimeToLive"
+			],
+			"Resource": [
+				"arn:aws:dynamodb:ap-east-1:*:table/tai-lam-poc-traffic",
+				"arn:aws:dynamodb:ap-east-1:*:table/tai-lam-poc-tolls"
+			]
+		},
+		{
+			"Sid": "IAMRoleManagement",
+			"Effect": "Allow",
+			"Action": [
+				"iam:CreateRole",
+				"iam:DeleteRole",
+				"iam:GetRole",
+				"iam:ListRolePolicies",
+				"iam:ListGroupsForUser",
+				"iam:CreatePolicy",
+				"iam:DeletePolicy",
+				"iam:GetPolicy",
+				"iam:GetPolicyVersion",
+				"iam:ListPolicyVersions",
+				"iam:AttachRolePolicy",
+				"iam:DetachRolePolicy",
+				"iam:CreateUser",
+				"iam:DeleteUser",
+				"iam:GetUser",
+				"iam:CreateAccessKey",
+				"iam:DeleteAccessKey",
+				"iam:AttachUserPolicy",
+				"iam:DetachUserPolicy",
+				"iam:TagRole",
+				"iam:TagUser",
+				"iam:TagPolicy",
+				"iam:PassRole",
+				"iam:CreateServiceLinkedRole",
+				"iam:ListAttachedRolePolicies",
+				"iam:ListAccessKeys",
+				"iam:ListInstanceProfilesForRole",
+				"iam:PutRolePolicy",
+				"iam:ListAttachedUserPolicies",
+				"iam:GetRolePolicy",
+				"iam:DeleteRolePolicy"
+			],
+			"Resource": [
+				"arn:aws:iam::*:role/tai-lam-poc-*",
+				"arn:aws:iam::*:policy/tai-lam-poc-*",
+				"arn:aws:iam::*:policy/TaiLam*",
+				"arn:aws:iam::*:user/tailam_*",
+				"arn:aws:iam::*:role/aws-service-role/elasticloadbalancing.amazonaws.com/AWSServiceRoleForElasticLoadBalancing"
+			]
+		},
+		{
+			"Sid": "LambdaFunctions",
+			"Effect": "Allow",
+			"Action": [
+				"lambda:CreateFunction",
+				"lambda:DeleteFunction",
+				"lambda:GetFunction",
+				"lambda:ListTags",
+				"lambda:UpdateFunctionCode",
+				"lambda:UpdateFunctionConfiguration",
+				"lambda:AddPermission",
+				"lambda:RemovePermission",
+				"lambda:TagResource",
+				"lambda:ListVersionsByFunction",
+				"lambda:GetFunctionCodeSigningConfig",
+				"lambda:GetPolicy",
+				"lambda:InvokeFunction"
+			],
+			"Resource": [
+				"arn:aws:lambda:ap-east-1:027354322570:function:tai-lam-poc-*",
+				"arn:aws:lambda:ap-east-1:027354322570:function:tai-lam-poc-*:*"
+			]
+		},
+		{
+			"Sid": "CloudWatchLogs",
+			"Effect": "Allow",
+			"Action": [
+				"logs:CreateLogGroup",
+				"logs:DeleteLogGroup",
+				"logs:DescribeLogGroups",
+				"logs:PutRetentionPolicy",
+				"logs:TagLogGroup",
+				"logs:ListTagsForResource"
+			],
+			"Resource": "arn:aws:logs:*:*:*"
+		},
+		{
+			"Sid": "APIGatewayManagement",
+			"Effect": "Allow",
+			"Action": [
+				"apigateway:GET",
+				"apigateway:POST",
+				"apigateway:PUT",
+				"apigateway:DELETE",
+				"apigateway:PATCH"
+			],
+			"Resource": [
+				"arn:aws:apigateway:ap-east-1::/restapis/*",
+                "arn:aws:apigateway:ap-east-1::/restapis/*/resources/*"
+			]
+		}
+	]
 }
 ```
 5. **Save credentials** for Terraform
@@ -274,28 +306,25 @@ aws configure
 # Secret Key: [tailam_builder secret]
 ```
 
-### 3. Deploy Infrastructure
+### 3. Deploy AWS Infrastructure
 
 ```bash
-# Deploy AWS resources
-cd terraform
-terraform init
-terraform apply
+# Linux/macOS
+./deploy.sh
 
-# Get GitHub Actions credentials
-terraform output tailam_deployer_access_key
-terraform output -raw tailam_deployer_secret_key
+# Windows
+deploy.bat
 ```
 
-### 4. Setup GitHub Actions
+### 4. Setup Production Deployment
 
-#### Configure Repository
+#### Configure GitHub Actions
 1. **GitHub** → **Settings** → **Actions** → **General**
 2. **Workflow permissions**: Read and write
 3. **Secrets** → **Actions** → Add:
    ```
-   AWS_ACCESS_KEY_ID: [terraform output tailam_deployer_access_key]
-   AWS_SECRET_ACCESS_KEY: [terraform output -raw tailam_deployer_secret_key]
+   AWS_ACCESS_KEY_ID: [from terraform output]
+   AWS_SECRET_ACCESS_KEY: [from terraform output]
    ```
 
 #### Update Image URL
@@ -304,12 +333,10 @@ Edit `terraform/ecs_deployment.tf`:
 image = "ghcr.io/YOUR_GITHUB_USERNAME/tai_lam_traffic_simulator:latest"
 ```
 
-#### Deploy
+#### Deploy to Production
 ```bash
-git add .
-git commit -m "Setup CI/CD"
 git push origin main
-# GitHub Actions will build and deploy automatically
+# GitHub Actions builds Docker image and deploys to ECS
 ```
 
 ## 🎮 Features
@@ -386,8 +413,9 @@ tai_lam_traffic_simulator/
 
 ### Security Features
 - **S3 Encryption**: AES-256 server-side encryption
-- **VPC Isolation**: Private subnets for ECS tasks
-- **Security Groups**: Restrictive ingress/egress rules
+- **Private Subnets**: ECS tasks isolated from internet
+- **NAT Gateway**: Secure outbound internet access
+- **Security Groups**: ALB-to-ECS communication only
 - **IAM Roles**: Service-specific permissions
 - **CloudWatch Logs**: Centralized logging with retention
 
@@ -428,23 +456,40 @@ aws logs tail /ecs/tai-lam-poc --follow
 
 ## 🚀 Deployment
 
-### Local
+### AWS Infrastructure
 ```bash
+# Linux/macOS
+./deploy.sh
+
+# Windows
+deploy.bat
+```
+
+### Production Deployment (GitHub Actions)
+```bash
+# Push code to trigger automatic ECS deployment
+git add .
+git commit -m "Deploy to production"
+git push origin main
+```
+
+### Local Development
+```bash
+# Setup local environment
+pip install -r requirements.txt
+
+# Start local dashboard
 docker-compose up --build
+# Access: http://localhost:8050
 ```
 
-### Production
+### Manual Infrastructure Deployment
 ```bash
-# Infrastructure
-terraform apply
-
-# CI/CD
-git push origin main  # Auto-deploys via GitHub Actions
-```
-
-### Custom Domain
-```bash
-terraform apply -var="domain_name=yourdomain.com"
+# Deploy with Terraform
+cd terraform
+terraform init
+terraform apply -auto-approve
+cd ..
 ```
 
 ## 📊 Demo Results
@@ -461,20 +506,27 @@ terraform apply -var="domain_name=yourdomain.com"
 - **Traffic Reduction**: 45% vs normal
 - **Travel Time**: 23% improvement
 
-## 💰 Cost (AWS Free Tier)
+## 💰 Cost (Hong Kong Region)
 
-### Free Tier (~$0.25/month)
+### Free Tier (~$15/month)
 - **ECS Fargate**: $0 (20GB-hours free)
-- **ALB**: $0 (750 hours free)
-- **DynamoDB**: $0 (25GB free)
 - **Lambda**: $0 (1M requests free)
+- **API Gateway**: $0 (1M calls free)
+- **DynamoDB**: $0 (25GB free)
 - **S3**: $0.23 (1GB storage)
+- **ALB**: $18 (no free tier in HK)
+- **NAT Gateway**: $45 (no free tier)
 
-### Production (~$50/month)
-- **ECS**: $30 (2 tasks 24/7)
-- **ALB**: $16 (fixed)
+### Production (~$80/month)
+- **ECS**: $45 (2 tasks 24/7)
+- **Lambda**: $0.20 per 1M requests
+- **API Gateway**: $3.50 per 1M calls
+- **ALB**: $18 (fixed)
+- **NAT Gateway**: $45 (fixed)
 - **DynamoDB**: $1.25/GB
 - **Route53**: $0.50
+
+**Note**: Hong Kong region has limited free tier services compared to US regions.
 
 ## 🆘 Troubleshooting
 
