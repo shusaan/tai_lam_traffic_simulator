@@ -2,7 +2,7 @@
 
 **AWS-Powered Dynamic Toll Pricing & Smart Traffic Management System**
 
-A production-ready traffic simulation and AI-driven dynamic toll pricing system for Hong Kong's Tai Lam Tunnel, built for AWS Hackathon 2024.
+A production-ready traffic simulation and AI-driven dynamic toll pricing system for Hong Kong's Tai Lam Tunnel, built for AWS Hackathon 2025.
 
 ## 🎯 Overview
 
@@ -648,7 +648,7 @@ cat terraform/terraform.tfvars
 aws ecs update-service --cluster tai-lam-poc-cluster --service tai-lam-poc-service --force-new-deployment
 ```
 
-## 🏆 AWS Hackathon 2024
+## 🏆 AWS Hackathon 2025
 
 ### Innovation
 - **🤖 Real AI**: Trained on Hong Kong traffic data
@@ -665,4 +665,4 @@ aws ecs update-service --cluster tai-lam-poc-cluster --service tai-lam-poc-servi
 
 ---
 
-**🚀 Built for AWS Hackathon 2024 | 🏆 Production-Ready Traffic AI**
+**🚀 Built for AWS Hackathon 2025 | 🏆 Production-Ready Traffic AI**
