@@ -1,1 +1,0 @@
-# GitHub Actions now uses OIDC authentication (see github_oidc.tf)

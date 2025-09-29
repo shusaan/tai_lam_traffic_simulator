@@ -22,9 +22,12 @@ Route53   Target         NAT Gateway            DynamoDB
 ## 🚀 Quick Start
 
 ### ⚠️ Required Configuration
-**Before deployment, you MUST update your GitHub username in 2 files.**
+**The deployment script will prompt for your GitHub username automatically.**
 
-📋 **See [SETUP.md](SETUP.md) for detailed step-by-step instructions.**
+**Example**: If your GitHub username is `johndoe`, the script will configure:
+- OIDC trust policy: `repo:johndoe/tai_lam_traffic_simulator:*`
+- Container image: `ghcr.io/johndoe/tai_lam_traffic_simulator:latest`
+- Repository name can be customized if you forked with different name
 
 ### 1. Local Development
 ```bash
@@ -323,21 +326,14 @@ deploy.bat
 
 ### 4. Setup Production Deployment
 
-#### Update GitHub Username
-**REQUIRED**: Edit `terraform/github_oidc.tf` line 32:
-```hcl
-"token.actions.githubusercontent.com:sub" = "repo:YOUR_GITHUB_USERNAME/tai_lam_traffic_simulator:*"
-```
-
-#### Update Image URL
-**REQUIRED**: Edit `terraform/ecs_deployment.tf`:
-```hcl
-image = "ghcr.io/YOUR_GITHUB_USERNAME/tai_lam_traffic_simulator:latest"
-```
-
-#### Re-deploy Infrastructure
+#### Deploy Infrastructure (Interactive)
 ```bash
+# Script will prompt for GitHub username
 ./deploy.sh  # or deploy.bat
+
+# Example interaction:
+# Enter your GitHub username (example: johndoe): myusername
+# Enter repository name (default: tai_lam_traffic_simulator): [press enter for default]
 ```
 
 #### Configure GitHub Actions (OIDC)
@@ -418,7 +414,7 @@ aws ecs describe-services --cluster tai-lam-poc-cluster --services tai-lam-poc-s
 ```
 tai_lam_traffic_simulator/
 ├── 🐳 Docker
-│   ├── Dockerfile.minimal
+│   ├── Dockerfile
 │   └── docker-compose.yml
 ├── 🏗️ Infrastructure
 │   ├── terraform/
@@ -519,6 +515,12 @@ pip install -r requirements.txt
 # Start local dashboard
 docker-compose up --build
 # Access: http://localhost:8050
+```
+
+### Development Dependencies
+```bash
+# For development with additional tools
+pip install -r requirements-dev.txt
 ```
 
 ### Manual Infrastructure Deployment

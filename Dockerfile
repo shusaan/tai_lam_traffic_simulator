@@ -1,21 +1,51 @@
-FROM python:3.10-slim
+# Multi-stage build for production optimization
+FROM python:3.10-slim AS builder
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+COPY requirements.txt /tmp/requirements.txt
+RUN pip install --user --no-cache-dir -r /tmp/requirements.txt
+
+# Production stage
+FROM python:3.10-slim AS production
+
+# Production optimizations
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app:/app/src
+ENV PORT=8050
 
 WORKDIR /app
 
-# Create cache directory
-RUN mkdir -p /root/.cache/pip
+# Create non-root user for security
+RUN groupadd -r appuser && useradd -r -g appuser appuser
 
-# Copy and install requirements first for better caching
-COPY requirements.txt .
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --upgrade pip && \
-    pip install -r requirements.txt
+# Copy Python packages from builder and set ownership
+COPY --from=builder --chown=appuser:appuser /root/.local /home/appuser/.local
 
-COPY src/ ./src/
-COPY *.py ./
+# Set PATH for appuser
+ENV PATH=/home/appuser/.local/bin:$PATH
 
-EXPOSE 8050
+# Copy application code (no models - loaded from S3)
+COPY --chown=appuser:appuser src/ ./src/
+COPY --chown=appuser:appuser *.csv ./
 
-ENV PYTHONPATH=/app
+# Create directories with proper permissions
+RUN mkdir -p /app/models /app/logs && \
+    chown -R appuser:appuser /app
 
-CMD ["python", "src/main.py", "--mode", "dashboard"]
+USER appuser
+
+EXPOSE $PORT
+
+# Health check
+# HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+#     CMD python -c "import requests; requests.get('http://localhost:$PORT/health', timeout=5)" || exit 1
+
+# Production: Use Gunicorn WSGI server
+CMD ["gunicorn", "--bind", "0.0.0.0:8050", "--workers", "2", "--timeout", "120", "--access-logfile", "-", "--error-logfile", "-", "src.dashboard.wsgi:server"]

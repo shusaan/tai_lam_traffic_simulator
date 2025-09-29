@@ -4,7 +4,7 @@ services:
   traffic-simulator:
     build:
       context: .
-      dockerfile: Dockerfile.minimal
+      dockerfile: Dockerfile
     ports:
       - "8050:8050"
     environment:

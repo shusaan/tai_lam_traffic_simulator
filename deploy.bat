@@ -24,15 +24,14 @@ if "%GITHUB_USERNAME%"=="" (
     exit /b 1
 )
 
-REM Update github_oidc.tf
-echo 🔧 Updating GitHub OIDC configuration...
-powershell -Command "(Get-Content terraform\github_oidc.tf) -replace 'YOUR_GITHUB_USERNAME', '%GITHUB_USERNAME%' | Set-Content terraform\github_oidc.tf"
-echo ✅ Updated terraform/github_oidc.tf
+REM Get repository name (with default)
+set /p REPO_NAME="Enter repository name (default: tai_lam_traffic_simulator): "
+if "%REPO_NAME%"=="" set REPO_NAME=tai_lam_traffic_simulator
 
-REM Update ecs_deployment.tf
-echo 🔧 Updating ECS image URL...
-powershell -Command "(Get-Content terraform\ecs_deployment.tf) -replace 'YOUR_GITHUB_USERNAME', '%GITHUB_USERNAME%' | Set-Content terraform\ecs_deployment.tf"
-echo ✅ Updated terraform/ecs_deployment.tf
+echo 🔧 Configuring Terraform variables...
+echo github_username = "%GITHUB_USERNAME%" > terraform\terraform.tfvars
+echo repository_name = "%REPO_NAME%" >> terraform\terraform.tfvars
+echo ✅ Created terraform/terraform.tfvars
 
 echo.
 echo ✅ Configuration complete for user: %GITHUB_USERNAME%

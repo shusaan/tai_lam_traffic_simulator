@@ -204,7 +204,7 @@ resource "aws_ecs_task_definition" "app" {
   container_definitions = jsonencode([
     {
       name  = "${var.project_name}-container"
-      image = "ghcr.io/your-github-username/tai_lam_traffic_simulator:latest"
+      image = "ghcr.io/${var.github_username}/${var.repository_name}:latest"
       
       portMappings = [
         {
@@ -404,7 +404,7 @@ output "load_balancer_dns" {
 
 output "github_registry_image" {
   description = "GitHub Container Registry image"
-  value       = "ghcr.io/shusaan/tai_lam_traffic_simulator:latest"
+  value       = "ghcr.io/${var.github_username}/${var.repository_name}:latest"
 }
 
 output "ecs_cluster_name" {

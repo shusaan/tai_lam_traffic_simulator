@@ -27,15 +27,14 @@ if [ -z "$GITHUB_USERNAME" ]; then
     exit 1
 fi
 
-# Update github_oidc.tf
-echo "🔧 Updating GitHub OIDC configuration..."
-sed -i "s/YOUR_GITHUB_USERNAME/$GITHUB_USERNAME/g" terraform/github_oidc.tf
-echo "✅ Updated terraform/github_oidc.tf"
+# Get repository name (with default)
+read -p "Enter repository name (default: tai_lam_traffic_simulator): " REPO_NAME
+REPO_NAME=${REPO_NAME:-tai_lam_traffic_simulator}
 
-# Update ecs_deployment.tf
-echo "🔧 Updating ECS image URL..."
-sed -i "s/YOUR_GITHUB_USERNAME/$GITHUB_USERNAME/g" terraform/ecs_deployment.tf
-echo "✅ Updated terraform/ecs_deployment.tf"
+echo "🔧 Configuring Terraform variables..."
+echo "github_username = \"$GITHUB_USERNAME\"" > terraform/terraform.tfvars
+echo "repository_name = \"$REPO_NAME\"" >> terraform/terraform.tfvars
+echo "✅ Created terraform/terraform.tfvars"
 
 echo ""
 echo "✅ Configuration complete for user: $GITHUB_USERNAME"

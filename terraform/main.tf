@@ -24,6 +24,18 @@ variable "project_name" {
   default     = "tai-lam-poc"
 }
 
+variable "github_username" {
+  description = "GitHub username for OIDC and container registry"
+  type        = string
+  default     = "example-user"
+}
+
+variable "repository_name" {
+  description = "GitHub repository name"
+  type        = string
+  default     = "tai_lam_traffic_simulator"
+}
+
 # DynamoDB Tables (Free Tier: 25GB storage, 25 RCU/WCU)
 resource "aws_dynamodb_table" "traffic_data" {
   name           = "${var.project_name}-traffic"

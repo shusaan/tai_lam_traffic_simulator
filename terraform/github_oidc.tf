@@ -34,7 +34,7 @@ resource "aws_iam_role" "github_actions" {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
           }
           StringLike = {
-            "token.actions.githubusercontent.com:sub" = "repo:shussan/tai_lam_traffic_simulator:*"
+            "token.actions.githubusercontent.com:sub" = "repo:${var.github_username}/${var.repository_name}:*"
           }
         }
       }
