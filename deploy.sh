@@ -14,6 +14,33 @@ if ! aws sts get-caller-identity > /dev/null 2>&1; then
 fi
 echo "✅ AWS credentials configured"
 
+# Interactive configuration
+echo ""
+echo "⚠️  Required Configuration"
+echo "Before deployment, we need to configure your GitHub username."
+echo ""
+
+# Get GitHub username
+read -p "Enter your GitHub username (example: johndoe): " GITHUB_USERNAME
+if [ -z "$GITHUB_USERNAME" ]; then
+    echo "❌ GitHub username is required"
+    exit 1
+fi
+
+# Update github_oidc.tf
+echo "🔧 Updating GitHub OIDC configuration..."
+sed -i "s/YOUR_GITHUB_USERNAME/$GITHUB_USERNAME/g" terraform/github_oidc.tf
+echo "✅ Updated terraform/github_oidc.tf"
+
+# Update ecs_deployment.tf
+echo "🔧 Updating ECS image URL..."
+sed -i "s/YOUR_GITHUB_USERNAME/$GITHUB_USERNAME/g" terraform/ecs_deployment.tf
+echo "✅ Updated terraform/ecs_deployment.tf"
+
+echo ""
+echo "✅ Configuration complete for user: $GITHUB_USERNAME"
+echo ""
+
 # Check Terraform
 if ! command -v terraform &> /dev/null; then
     echo "❌ Terraform not installed. Install from: https://terraform.io"
@@ -87,8 +114,11 @@ echo ""
 echo "🎉 AWS Infrastructure Deployed!"
 echo ""
 echo "Next steps:"
-echo "1. Push code to GitHub for automatic ECS deployment"
-echo "2. For local development: docker-compose up --build"
+echo "1. Add GitHub Secret:"
+echo "   - Go to GitHub Settings > Secrets > Actions"
+echo "   - Add: AWS_ROLE_ARN = $(cd terraform && terraform output -raw github_actions_role_arn 2>/dev/null || echo 'Check terraform output')"
+echo "2. Push code to GitHub for automatic ECS deployment"
+echo "3. For local development: docker-compose up --build"
 
 # Show outputs
 if [ -f deployment_outputs.json ]; then

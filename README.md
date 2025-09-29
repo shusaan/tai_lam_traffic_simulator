@@ -21,6 +21,11 @@ Route53   Target         NAT Gateway            DynamoDB
 
 ## 🚀 Quick Start
 
+### ⚠️ Required Configuration
+**Before deployment, you MUST update your GitHub username in 2 files.**
+
+📋 **See [SETUP.md](SETUP.md) for detailed step-by-step instructions.**
+
 ### 1. Local Development
 ```bash
 git clone <repository-url>
@@ -318,20 +323,31 @@ deploy.bat
 
 ### 4. Setup Production Deployment
 
-#### Configure GitHub Actions
+#### Update GitHub Username
+**REQUIRED**: Edit `terraform/github_oidc.tf` line 32:
+```hcl
+"token.actions.githubusercontent.com:sub" = "repo:YOUR_GITHUB_USERNAME/tai_lam_traffic_simulator:*"
+```
+
+#### Update Image URL
+**REQUIRED**: Edit `terraform/ecs_deployment.tf`:
+```hcl
+image = "ghcr.io/YOUR_GITHUB_USERNAME/tai_lam_traffic_simulator:latest"
+```
+
+#### Re-deploy Infrastructure
+```bash
+./deploy.sh  # or deploy.bat
+```
+
+#### Configure GitHub Actions (OIDC)
 1. **GitHub** → **Settings** → **Actions** → **General**
 2. **Workflow permissions**: Read and write
 3. **Secrets** → **Actions** → Add:
    ```
-   AWS_ACCESS_KEY_ID: [from terraform output]
-   AWS_SECRET_ACCESS_KEY: [from terraform output]
+   Name: AWS_ROLE_ARN
+   Value: [from terraform output github_actions_role_arn]
    ```
-
-#### Update Image URL
-Edit `terraform/ecs_deployment.tf`:
-```hcl
-image = "ghcr.io/YOUR_GITHUB_USERNAME/tai_lam_traffic_simulator:latest"
-```
 
 #### Deploy to Production
 ```bash
@@ -420,9 +436,10 @@ tai_lam_traffic_simulator/
 - **CloudWatch Logs**: Centralized logging with retention
 
 ### Deployment Security
-- **GitHub Actions**: Secure CI/CD with minimal AWS permissions
+- **OIDC Authentication**: No long-term AWS keys stored in GitHub
+- **GitHub Actions**: Secure CI/CD with temporary credentials
 - **Container Registry**: GitHub Container Registry (GHCR)
-- **Secrets Management**: AWS credentials via GitHub Secrets
+- **Role-Based Access**: Repository-specific IAM role
 - **Image Scanning**: Automated vulnerability scanning
 
 ## 📈 Performance
@@ -563,11 +580,25 @@ aws ec2 describe-security-groups --filters "Name=group-name,Values=tai-lam-poc-*
 # Verify S3 encryption
 aws s3api get-bucket-encryption --bucket tai-lam-poc-models
 
-# Check IAM policy compliance
-aws iam get-user-policy --user-name tailam_builder --policy-name TaiLamBuilderPolicy
+# Check OIDC provider
+aws iam list-open-id-connect-providers
+
+# Validate GitHub Actions role
+aws iam get-role --role-name github-actions-tai-lam-role
 
 # Validate VPC configuration
 aws ec2 describe-vpcs --filters "Name=tag:Name,Values=tai-lam-poc-vpc"
+```
+
+### OIDC Troubleshooting
+```bash
+# If GitHub Actions fails with "Not authorized to perform sts:AssumeRole"
+# 1. Check GitHub username in terraform/github_oidc.tf
+# 2. Verify repository name matches exactly
+# 3. Ensure AWS_ROLE_ARN secret is set correctly
+
+# Get role ARN from Terraform output
+terraform output github_actions_role_arn
 ```
 
 ## 🏆 AWS Hackathon 2024
