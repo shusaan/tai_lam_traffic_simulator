@@ -180,10 +180,30 @@ resource "aws_lb_target_group" "app" {
   }
 }
 
-resource "aws_lb_listener" "web" {
+# HTTP Listener (redirect to HTTPS)
+resource "aws_lb_listener" "web_http" {
   load_balancer_arn = aws_lb.main.arn
   port              = "80"
   protocol          = "HTTP"
+  
+  default_action {
+    type = "redirect"
+    
+    redirect {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+    }
+  }
+}
+
+# HTTPS Listener
+resource "aws_lb_listener" "web_https" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = "443"
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-TLS-1-2-2017-01"
+  certificate_arn   = aws_acm_certificate.main.arn
   
   default_action {
     type             = "forward"
@@ -259,7 +279,7 @@ resource "aws_ecs_service" "main" {
   name            = "${var.project_name}-service"
   cluster         = aws_ecs_cluster.tai_lam_cluster.id
   task_definition = aws_ecs_task_definition.app.arn
-  desired_count   = 2
+  desired_count   = 1
   launch_type     = "FARGATE"
   
   network_configuration {
@@ -274,7 +294,7 @@ resource "aws_ecs_service" "main" {
     container_port   = 8050
   }
   
-  depends_on = [aws_lb_listener.web]
+  depends_on = [aws_lb_listener.web_https]
   
   tags = {
     Name = "${var.project_name}-service"
@@ -363,41 +383,36 @@ resource "aws_iam_role_policy_attachment" "ecs_task_dynamodb_access" {
 # CloudWatch Logs
 resource "aws_cloudwatch_log_group" "ecs_logs" {
   name              = "/ecs/${var.project_name}"
-  retention_in_days = 30
+  retention_in_days = 3
   
   tags = {
     Name = "${var.project_name}-logs"
   }
 }
 
-# Route 53 (Optional - for custom domain)
-resource "aws_route53_zone" "main" {
-  count = var.domain_name != "" ? 1 : 0
-  name  = var.domain_name
+# ACM Certificate for HTTPS
+resource "aws_acm_certificate" "main" {
+  domain_name       = var.domain_name
+  validation_method = "DNS"
+  
+  lifecycle {
+    create_before_destroy = true
+  }
   
   tags = {
-    Name = "${var.project_name}-zone"
+    Name = "${var.project_name}-cert"
   }
 }
 
-resource "aws_route53_record" "app" {
-  count   = var.domain_name != "" ? 1 : 0
-  zone_id = aws_route53_zone.main[0].zone_id
-  name    = var.domain_name
-  type    = "A"
-  
-  alias {
-    name                   = aws_lb.main.dns_name
-    zone_id                = aws_lb.main.zone_id
-    evaluate_target_health = true
-  }
-}
+# Certificate validation will be done manually via DNS
+# After deployment, add the DNS records to Aliyun, then run:
+# terraform apply again to complete validation
 
 # Variables
 variable "domain_name" {
-  description = "Domain name for the application (optional)"
+  description = "Domain name for the application"
   type        = string
-  default     = ""
+  default     = "hk-traffic.aiopscraft.cloud"
 }
 
 # Outputs
@@ -414,4 +429,20 @@ output "github_registry_image" {
 output "ecs_cluster_name" {
   description = "ECS cluster name"
   value       = aws_ecs_cluster.tai_lam_cluster.name
+}
+
+output "domain_name" {
+  description = "Custom domain name"
+  value       = var.domain_name
+}
+
+output "certificate_validation_records" {
+  description = "DNS records needed for certificate validation"
+  value = {
+    for dvo in aws_acm_certificate.main.domain_validation_options : dvo.domain_name => {
+      name   = dvo.resource_record_name
+      record = dvo.resource_record_value
+      type   = dvo.resource_record_type
+    }
+  }
 }
