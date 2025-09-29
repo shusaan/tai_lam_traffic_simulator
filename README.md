@@ -341,18 +341,39 @@ image = "ghcr.io/YOUR_GITHUB_USERNAME/tai_lam_traffic_simulator:latest"
 ```
 
 #### Configure GitHub Actions (OIDC)
-1. **GitHub** → **Settings** → **Actions** → **General**
-2. **Workflow permissions**: Read and write
-3. **Secrets** → **Actions** → Add:
+1. **GitHub Repository** → **Settings** → **Secrets and variables** → **Actions**
+2. **Repository secrets** → **New repository secret**
+3. Add secret:
    ```
    Name: AWS_ROLE_ARN
-   Value: [from terraform output github_actions_role_arn]
+   Value: [from terraform output - example: arn:aws:iam::123456789:role/github-actions-tai-lam-role]
    ```
+4. **Settings** → **Actions** → **General** → **Workflow permissions**: Read and write
 
 #### Deploy to Production
 ```bash
+# Commit and push to trigger deployment
+git add .
+git commit -m "Deploy to production"
 git push origin main
-# GitHub Actions builds Docker image and deploys to ECS
+
+# GitHub Actions will:
+# 1. Build Docker image
+# 2. Push to GitHub Container Registry
+# 3. Deploy to ECS automatically
+```
+
+#### Verify Deployment
+```bash
+# Check GitHub Actions
+# Go to Actions tab in your repository
+
+# Check ECS service
+aws ecs describe-services --cluster tai-lam-poc-cluster --services tai-lam-poc-service
+
+# Access your application
+# Production: http://[load-balancer-dns]
+# API: https://[api-gateway-url]/toll
 ```
 
 ## 🎮 Features
@@ -599,6 +620,18 @@ aws ec2 describe-vpcs --filters "Name=tag:Name,Values=tai-lam-poc-vpc"
 
 # Get role ARN from Terraform output
 terraform output github_actions_role_arn
+```
+
+### GitHub Actions Deployment Issues
+```bash
+# If deployment fails:
+# 1. Check Actions tab in GitHub repository
+# 2. Verify AWS_ROLE_ARN secret is added
+# 3. Ensure repository has "Read and write" workflow permissions
+# 4. Check ECS task logs in CloudWatch
+
+# Manual ECS deployment (if needed)
+aws ecs update-service --cluster tai-lam-poc-cluster --service tai-lam-poc-service --force-new-deployment
 ```
 
 ## 🏆 AWS Hackathon 2024

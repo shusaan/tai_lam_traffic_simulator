@@ -48,22 +48,35 @@ terraform output github_actions_role_arn
 ### 3. Configure GitHub Repository
 1. Go to your GitHub repository
 2. **Settings** → **Secrets and variables** → **Actions**
-3. Click **New repository secret**
+3. **Repository secrets** → **New repository secret**
 4. Add:
    - **Name**: `AWS_ROLE_ARN`
    - **Value**: [output from step 2]
+   - **Environment**: Leave blank (repository level)
 
 ### 4. Enable GitHub Actions
 1. **Settings** → **Actions** → **General**
 2. **Actions permissions**: Allow all actions and reusable workflows
 3. **Workflow permissions**: Read and write permissions
+4. **Allow GitHub Actions to create and approve pull requests**: ✅ (optional)
 
 ### 5. Deploy Application
 ```bash
+# Commit your changes
 git add .
-git commit -m "Configure OIDC and deploy"
+git commit -m "Configure OIDC and deploy to production"
 git push origin main
+
+# This will trigger GitHub Actions to:
+# 1. Build Docker image
+# 2. Push to GitHub Container Registry (GHCR)
+# 3. Update ECS service with new image
 ```
+
+### 6. Monitor Deployment
+1. **GitHub** → **Actions** tab → Watch workflow progress
+2. **AWS Console** → **ECS** → Check service status
+3. **CloudWatch** → **Logs** → View application logs
 
 ## Verification
 
