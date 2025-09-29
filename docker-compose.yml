@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  traffic-simulator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8050:8050"
+    environment:
+      - PYTHONPATH=/app
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+      - pip-cache:/root/.cache/pip
+    restart: unless-stopped
+
+volumes:
+  pip-cache:
