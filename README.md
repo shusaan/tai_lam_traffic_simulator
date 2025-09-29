@@ -388,11 +388,13 @@ aws ecs describe-services --cluster tai-lam-poc-cluster --services tai-lam-poc-s
 
 ### AI Pricing
 - **🤖 ML Model**: Trained on real Hong Kong data (stored in S3)
+- **🧠 Reinforcement Learning**: Q-learning agent for continuous optimization
 - **☁️ Lambda API**: AI-powered toll calculation via AWS Lambda
-- **📊 Optimization**: Balances revenue + traffic flow
+- **📊 Optimization**: Balances revenue + traffic flow + congestion
 - **⚡ Range**: HK$18-55 dynamic pricing
 - **🔄 Fallback**: Rule-based backup system
 - **📊 Data Storage**: Real-time data in DynamoDB tables
+- **🔄 Continuous Learning**: Model updates from latest traffic patterns
 
 ## ⚙️ Configuration
 

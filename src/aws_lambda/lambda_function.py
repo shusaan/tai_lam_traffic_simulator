@@ -7,6 +7,15 @@ import pickle
 import numpy as np
 from datetime import datetime
 from decimal import Decimal
+import sys
+sys.path.append('/opt/python')
+
+try:
+    from rl_agent.q_learning_agent import QLearningTollAgent
+    RL_AVAILABLE = True
+except ImportError:
+    RL_AVAILABLE = False
+    print("RL agent not available, using fallback")
 
 # Initialize AWS clients
 s3 = boto3.client('s3')
@@ -77,12 +86,22 @@ def get_traffic_data():
         }
 
 def calculate_ai_toll_price(traffic_data):
-    """Calculate toll price using AI model"""
+    """Calculate toll price using AI model with RL integration"""
     try:
+        # Try RL agent first
+        if RL_AVAILABLE:
+            rl_agent = QLearningTollAgent()
+            bucket_name = os.environ.get('MODEL_S3_BUCKET', 'tai-lam-poc-models')
+            
+            if rl_agent.load_model(bucket_name):
+                current_toll = 30.0  # Default current toll
+                rl_toll, _ = rl_agent.get_toll_recommendation(traffic_data, current_toll)
+                return float(rl_toll)
+        
+        # Fallback to supervised ML model
         model = load_model_from_s3()
         
         if model is None:
-            # Fallback to rule-based pricing
             return calculate_rule_based_toll(traffic_data)
         
         # Prepare features for ML model

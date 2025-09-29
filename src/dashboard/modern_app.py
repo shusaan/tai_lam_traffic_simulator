@@ -14,6 +14,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from simulator.traffic_simulator import TrafficSimulator
 from simulator.trained_pricing_model import TrainedPricingModel as HybridPricingModel
+from rl_agent.q_learning_agent import QLearningTollAgent
 from simple_data_processor import TrafficDataProcessor
 from config import SCENARIOS, ROADS, TOLL_CONFIG
 
@@ -21,6 +22,7 @@ from config import SCENARIOS, ROADS, TOLL_CONFIG
 simulator = TrafficSimulator()
 pricing_model = HybridPricingModel()
 data_processor = TrafficDataProcessor()
+rl_agent = QLearningTollAgent()
 
 # Initialize Dash app with external stylesheets
 app = dash.Dash(__name__, external_stylesheets=[
@@ -464,6 +466,7 @@ def get_status_display():
 def run_simulation_background(scenario):
     global simulation_data
     prev_state = None
+    prev_toll = simulator.toll_price
     
     while simulation_running:
         traffic_snapshot = simulator.simulate_step(scenario)
@@ -471,12 +474,32 @@ def run_simulation_background(scenario):
         
         if len(simulation_data) % 15 == 0:
             current_state = simulator.get_current_state()
-            new_toll = pricing_model.get_price_recommendation(current_state)
+            
+            # Use RL agent for toll recommendation
+            rl_toll, rl_action = rl_agent.get_toll_recommendation(current_state, simulator.toll_price)
+            
+            # Fallback to hybrid model if needed
+            hybrid_toll = pricing_model.get_price_recommendation(current_state)
+            
+            # Use RL recommendation with 70% probability, hybrid 30%
+            import random
+            if random.random() < 0.7:
+                new_toll = rl_toll
+            else:
+                new_toll = hybrid_toll
+            
             simulator.update_toll_price(new_toll)
             
+            # Train RL agent
             if prev_state:
+                reward = rl_agent.calculate_reward(prev_state, current_state, rl_action, new_toll)
+                rl_agent.train_step(prev_state, rl_action, reward, current_state)
+                
+                # Train hybrid model
                 pricing_model.train_step(prev_state, simulator.toll_price, current_state)
+            
             prev_state = current_state
+            prev_toll = new_toll
         
         if len(simulation_data) > 1000:
             simulation_data = simulation_data[-1000:]
