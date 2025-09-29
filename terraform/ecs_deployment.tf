@@ -229,6 +229,10 @@ resource "aws_ecs_task_definition" "app" {
         {
           name  = "TOLL_TABLE"
           value = "${var.project_name}-tolls"
+        },
+        {
+          name  = "API_GATEWAY_URL"
+          value = "https://${aws_api_gateway_rest_api.toll_api.id}.execute-api.${var.aws_region}.amazonaws.com/dev/toll"
         }
       ]
       

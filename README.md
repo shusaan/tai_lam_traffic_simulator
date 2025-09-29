@@ -378,6 +378,7 @@ aws ecs describe-services --cluster tai-lam-poc-cluster --services tai-lam-poc-s
 - **🎨 Modern UI**: AWS-themed responsive design
 - **⚡ Real-time**: Live updates every 3 seconds
 - **🎯 Interactive**: Start/stop simulations, change scenarios
+- **☁️ AWS Integration**: Automatically connects to deployed S3, DynamoDB, and API Gateway
 
 ### Traffic Scenarios
 - **🌅 Normal**: Baseline (1x demand)
@@ -386,12 +387,19 @@ aws ecs describe-services --cluster tai-lam-poc-cluster --services tai-lam-poc-s
 - **🎵 Concert Night**: Event surge (3x demand)
 
 ### AI Pricing
-- **🤖 ML Model**: Trained on real Hong Kong data
+- **🤖 ML Model**: Trained on real Hong Kong data (stored in S3)
 - **📊 Optimization**: Balances revenue + traffic flow
 - **⚡ Range**: HK$18-55 dynamic pricing
 - **🔄 Fallback**: Rule-based backup system
+- **📊 Data Storage**: Real-time data in DynamoDB tables
 
 ## ⚙️ Configuration
+
+### AWS Resources (Auto-Configured)
+- **S3 Bucket**: `tai-lam-poc-models` (ML model storage)
+- **DynamoDB Tables**: `tai-lam-poc-traffic`, `tai-lam-poc-tolls`
+- **API Gateway**: Toll pricing API endpoint
+- **Region**: Hong Kong (`ap-east-1`)
 
 ### Toll Pricing
 - **Base**: HK$30, **Range**: HK$18-55
@@ -615,13 +623,17 @@ aws ec2 describe-vpcs --filters "Name=tag:Name,Values=tai-lam-poc-vpc"
 
 ### OIDC Troubleshooting
 ```bash
-# If GitHub Actions fails with "Not authorized to perform sts:AssumeRole"
-# 1. Check GitHub username in terraform/github_oidc.tf
+# If GitHub Actions fails with "Not authorized to perform sts:AssumeRoleWithWebIdentity"
+# 1. Check GitHub username in terraform/terraform.tfvars
 # 2. Verify repository name matches exactly
 # 3. Ensure AWS_ROLE_ARN secret is set correctly
+# 4. Re-deploy infrastructure after username changes
 
 # Get role ARN from Terraform output
 terraform output github_actions_role_arn
+
+# Check current configuration
+cat terraform/terraform.tfvars
 ```
 
 ### GitHub Actions Deployment Issues

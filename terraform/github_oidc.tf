@@ -28,7 +28,10 @@ resource "aws_iam_role" "github_actions" {
         Principal = {
           Federated = aws_iam_openid_connect_provider.github.arn
         }
-        Action = "sts:AssumeRole"
+        Action = [
+          "sts:AssumeRole",
+          "sts:AssumeRoleWithWebIdentity"
+        ]
         Condition = {
           StringEquals = {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
@@ -60,9 +63,11 @@ resource "aws_iam_policy" "github_actions_policy" {
           "ecs:DescribeTaskDefinition",
           "ecs:RegisterTaskDefinition",
           "ecs:UpdateService",
-          "ecs:DescribeServices"
+          "ecs:DescribeServices",
+          "ecs:ListTaskDefinitions"
         ]
         Resource = [
+          "arn:aws:ecs:${var.aws_region}:*:task-definition/${var.project_name}-task",
           "arn:aws:ecs:${var.aws_region}:*:task-definition/${var.project_name}-task:*",
           "arn:aws:ecs:${var.aws_region}:*:service/${var.project_name}-cluster/${var.project_name}-service"
         ]

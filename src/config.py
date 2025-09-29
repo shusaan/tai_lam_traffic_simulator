@@ -63,10 +63,11 @@ SCENARIOS = {
 }
 
 # AWS Configuration
-AWS_REGION = os.getenv("AWS_REGION", "ap-southeast-1")
-DYNAMODB_TABLE_TRAFFIC = "tai-lam-traffic-data"
-DYNAMODB_TABLE_TOLLS = "tai-lam-toll-history"
-KINESIS_STREAM = "tai-lam-traffic-stream"
+AWS_REGION = os.getenv("AWS_DEFAULT_REGION", "ap-east-1")
+S3_MODEL_BUCKET = os.getenv("MODEL_S3_BUCKET", "tai-lam-poc-models")
+DYNAMODB_TABLE_TRAFFIC = os.getenv("TRAFFIC_TABLE", "tai-lam-poc-traffic")
+DYNAMODB_TABLE_TOLLS = os.getenv("TOLL_TABLE", "tai-lam-poc-tolls")
+API_GATEWAY_URL = os.getenv("API_GATEWAY_URL", "https://api.example.com/dev/toll")
 
 # Simulation parameters
 SIMULATION_STEP_MINUTES = 1
