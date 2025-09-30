@@ -11,3 +11,4 @@ terraform/
 *.zip
 *.log
 deployment_outputs.json
+xml_cache
