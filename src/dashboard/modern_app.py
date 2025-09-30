@@ -1,5 +1,3 @@
-"""Fixed modern dashboard for Tai Lam Traffic Simulator"""
-
 import dash
 from dash import dcc, html, Input, Output, State
 import plotly.graph_objs as go
