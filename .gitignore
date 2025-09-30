@@ -88,3 +88,5 @@ temp/
 *.tmp
 *.bak
 *.backup
+
+xml_cache
