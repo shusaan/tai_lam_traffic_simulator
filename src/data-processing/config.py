@@ -1,4 +1,7 @@
+"""Data Processing Configuration for Hong Kong Traffic Data"""
+
 from datetime import datetime
+import os
 
 # -------------------------
 # Date Ranges
@@ -16,27 +19,37 @@ RAW_URL = "https://resource.data.one.gov.hk/td/traffic-detectors/rawSpeedVol-all
 LOCATIONS_CSV_URL = "https://static.data.gov.hk/td/traffic-data-strategic-major-roads/info/traffic_speed_volume_occ_info.csv"
 
 # -------------------------
-# Local Paths
+# Local Paths (consistent with project structure)
 # -------------------------
-DATA_DIR = "xml_cache"  # local cache folder
-CACHE_FILE = "hk_tunnel_traffic.csv"
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+DATA_DIR = os.path.join(PROJECT_ROOT, "data", "xml_cache")
+CACHE_FILE = os.path.join(PROJECT_ROOT, "data", "hk_tunnel_traffic.csv")
+OUTPUT_DIR = os.path.join(PROJECT_ROOT, "data", "analysis")
 
 # -------------------------
-# Toll Assumptions (HKD)
+# Toll Configuration (consistent with main config)
 # -------------------------
-TOLL_BEFORE = 65
-TOLL_PEAK = 45
-TOLL_OFFPEAK = 30
+TOLL_BEFORE = 65  # HKD before policy change
+TOLL_PEAK = 45    # HKD peak hours after policy
+TOLL_OFFPEAK = 30 # HKD off-peak hours after policy
+
+# Base toll for simulation (consistent with main project)
+BASE_TOLL = 30.0
+MIN_TOLL = 18.0
+MAX_TOLL = 55.0
 
 # -------------------------
-# Corridor Mapping
+# Road Mapping (consistent with main project)
 # -------------------------
 CORRIDOR_KEYWORDS = {
-    "tai_lam": ["Tai Lam"],
-    "nt_circular": ["Tuen Mun Road", "NT Circular"]
+    "tai_lam_tunnel": ["Tai Lam", "Tai Lam Tunnel"],
+    "tuen_mun_road": ["Tuen Mun Road"],
+    "nt_circular_road": ["NT Circular", "New Territories Circular Road"]
 }
 
 # -------------------------
-# Parallel downloads
+# Processing Configuration
 # -------------------------
 MAX_WORKERS = 25
+CHUNK_SIZE = 1000
+TIMEOUT_SECONDS = 30

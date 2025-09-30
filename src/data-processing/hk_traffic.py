@@ -3,17 +3,20 @@
 """
 Hong Kong Traffic Data ETL Script
 ---------------------------------
+Integrated with Tai Lam AI Traffic Optimizer project
+
 - Downloads historical detector XML snapshots (resumable)
 - Parses and aggregates by corridor
 - Labels before/after 31 May 2025 toll policy change
 - Adds peak/off-peak time buckets
-- Outputs hourly traffic CSV
+- Outputs hourly traffic CSV for ML training
 
 Usage:
-    python hk_traffic.py
+    python src/data-processing/hk_traffic.py
 """
 
 import os
+import sys
 import glob
 import requests
 import xml.etree.ElementTree as ET
@@ -21,11 +24,20 @@ import pandas as pd
 from datetime import timedelta
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed, ProcessPoolExecutor
+import logging
+
+# Add project root to path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from config import (
     START_DATE, END_DATE, POLICY_CHANGE_DATE,
     LIST_API, GET_API, RAW_URL, LOCATIONS_CSV_URL,
-    DATA_DIR, CACHE_FILE, CORRIDOR_KEYWORDS, MAX_WORKERS
+    DATA_DIR, CACHE_FILE, OUTPUT_DIR, CORRIDOR_KEYWORDS, 
+    MAX_WORKERS, TIMEOUT_SECONDS
 )
+
+# Setup logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 # -------------------------
@@ -205,14 +217,58 @@ def aggregate(rows, loc_corridors):
 
 
 # -------------------------
+# Export for ML Training
+# -------------------------
+def export_for_ml_training(df):
+    """Export processed data for ML model training"""
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    
+    # Export full dataset
+    ml_file = os.path.join(OUTPUT_DIR, "hk_traffic_ml_ready.csv")
+    df.to_csv(ml_file, index=False)
+    logging.info(f"✅ ML training data exported: {ml_file}")
+    
+    return ml_file
+
+
+# -------------------------
 # Main
 # -------------------------
 def main():
-    loc_corridors, valid_ids = load_metadata()
-    download_snapshots()
-    rows = parse_all_snapshots(valid_ids)
-    pivot = aggregate(rows, loc_corridors)
-    print(pivot.head())
+    """Main ETL pipeline for Hong Kong traffic data"""
+    logging.info("🚀 Starting Hong Kong Traffic Data ETL Pipeline")
+    
+    try:
+        # Create output directories
+        os.makedirs(DATA_DIR, exist_ok=True)
+        os.makedirs(OUTPUT_DIR, exist_ok=True)
+        
+        # Load metadata and download data
+        loc_corridors, valid_ids = load_metadata()
+        download_snapshots()
+        
+        # Parse and aggregate data
+        rows = parse_all_snapshots(valid_ids)
+        if not rows:
+            logging.error("❌ No data parsed from XML files")
+            return
+        
+        pivot = aggregate(rows, loc_corridors)
+        
+        # Export for ML training
+        ml_file = export_for_ml_training(pivot)
+        
+        # Display results
+        logging.info("\n📊 Data Processing Complete:")
+        logging.info(f"   - Total records: {len(pivot):,}")
+        logging.info(f"   - ML training file: {ml_file}")
+        
+        print("\n📋 Sample Data:")
+        print(pivot.head())
+        
+    except Exception as e:
+        logging.error(f"❌ Pipeline failed: {str(e)}")
+        raise
 
 
 if __name__ == "__main__":

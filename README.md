@@ -467,6 +467,51 @@ tai_lam_traffic_simulator/
     └── src/aws_lambda/
 ```
 
+## 📊 Data Processing
+
+### **Real Hong Kong Traffic Data Pipeline**
+The project includes scripts to process real Hong Kong government traffic data:
+
+#### **Setup Data Processing**
+```bash
+# Install additional dependencies
+pip install tqdm matplotlib seaborn statsmodels lxml
+
+# Create data directories
+mkdir -p data/xml_cache data/analysis
+```
+
+#### **Download and Process Traffic Data**
+```bash
+# Step 1: Download and process Hong Kong traffic data
+python src/data-processing/hk_traffic.py
+
+# This will:
+# - Download XML snapshots from HK government API
+# - Parse traffic detector data
+# - Aggregate by road corridors
+# - Export processed CSV for ML training
+```
+
+#### **Analyze Traffic Patterns**
+```bash
+# Step 2: Analyze traffic patterns and generate ML features
+python src/data-processing/traffic_analysis.py
+
+# This will:
+# - Analyze before/after toll policy changes
+# - Generate peak vs off-peak comparisons
+# - Create ML training features
+# - Export training datasets
+```
+
+#### **Data Processing Features**
+- **📡 Real Data**: Downloads from Hong Kong government traffic APIs
+- **🔄 Resumable**: Caches downloaded data for interrupted runs
+- **⚡ Parallel**: Multi-threaded downloads for faster processing
+- **🧠 ML Ready**: Exports feature-engineered datasets for model training
+- **🎯 Integration**: Seamlessly integrates with main simulation system
+
 ## 🔧 API
 
 - `GET /health` - Health check
