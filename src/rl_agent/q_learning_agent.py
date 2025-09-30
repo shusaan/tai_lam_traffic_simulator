@@ -26,9 +26,16 @@ class QLearningTollAgent:
         self.revenue_bins = [0, 25000, 50000, 75000, 100000]  # HKD per hour
         self.time_bins = [0, 6, 9, 17, 20, 24]  # Hour of day
         
-        # AWS clients
-        self.s3 = boto3.client('s3')
-        self.dynamodb = boto3.resource('dynamodb')
+        # AWS clients (optional for local development)
+        try:
+            self.s3 = boto3.client('s3', region_name='ap-east-1')
+            self.dynamodb = boto3.resource('dynamodb', region_name='ap-east-1')
+            self.aws_available = True
+        except Exception as e:
+            print(f"AWS not available: {e}")
+            self.s3 = None
+            self.dynamodb = None
+            self.aws_available = False
         
     def discretize_state(self, traffic_state):
         """Convert continuous state to discrete state for Q-table"""
@@ -156,6 +163,10 @@ class QLearningTollAgent:
     
     def save_model(self, bucket_name, key='rl_toll_agent.pkl'):
         """Save Q-table to S3"""
+        if not self.aws_available:
+            print("AWS not available, cannot save model")
+            return False
+            
         try:
             # Convert defaultdict to regular dict for serialization
             q_table_dict = {
@@ -184,6 +195,10 @@ class QLearningTollAgent:
     
     def load_model(self, bucket_name, key='rl_toll_agent.pkl'):
         """Load Q-table from S3"""
+        if not self.aws_available:
+            print("AWS not available, cannot load model")
+            return False
+            
         try:
             response = self.s3.get_object(Bucket=bucket_name, Key=key)
             model_data = pickle.loads(response['Body'].read())

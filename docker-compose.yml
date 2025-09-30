@@ -9,6 +9,10 @@ services:
       - "8050:8050"
     environment:
       - PYTHONPATH=/app
+      - AWS_DEFAULT_REGION=ap-east-1
+      - AWS_ACCESS_KEY_ID=dummy
+      - AWS_SECRET_ACCESS_KEY=dummy
+      - LOCAL_MODE=true
     volumes:
       - ./logs:/app/logs
       - ./data:/app/data

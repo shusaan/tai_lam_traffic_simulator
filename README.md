@@ -60,248 +60,274 @@ aws configure
 4. **Attach policy** (JSON) - **Production-Ready Minimal Permissions**:
 ```json
 {
-	"Version": "2012-10-17",
-	"Statement": [
-		{
-			"Sid": "TerraformStateManagement",
-			"Effect": "Allow",
-			"Action": [
-				"s3:GetObject",
-				"s3:PutObject",
-				"s3:DeleteObject",
-				"s3:ListBucket",
-				"dynamodb:GetItem",
-				"dynamodb:PutItem",
-				"dynamodb:DeleteItem"
-			],
-			"Resource": [
-				"arn:aws:s3:::tai-lam-terraform-state-hk",
-				"arn:aws:s3:::tai-lam-terraform-state-hk/*"
-			]
-		},
-		{
-			"Sid": "ECSInfrastructure",
-			"Effect": "Allow",
-			"Action": [
-				"ecs:CreateCluster",
-				"ecs:DeleteCluster",
-				"ecs:DescribeClusters",
-				"ecs:CreateService",
-				"ecs:DeleteService",
-				"ecs:UpdateService",
-				"ecs:DescribeServices",
-				"ecs:RegisterTaskDefinition",
-				"ecs:DeregisterTaskDefinition",
-				"ecs:DescribeTaskDefinition",
-				"ecs:TagResource"
-			],
-			"Resource": [
-				"arn:aws:ecs:ap-east-1:*:cluster/tai-lam-poc-*",
-				"arn:aws:ecs:ap-east-1:*:service/tai-lam-poc-*/*",
-				"arn:aws:ecs:ap-east-1:*:task-definition/tai-lam-poc-*:*"
-			]
-		},
-		{
-			"Sid": "NetworkingResources",
-			"Effect": "Allow",
-			"Action": [
-				"ec2:DescribeVpcs",
-				"ec2:DescribeNetworkInterfaces",
-				"ec2:CreateSubnet",
-				"ec2:DeleteSubnet",
-				"ec2:DescribeSubnets",
-				"ec2:CreateInternetGateway",
-				"ec2:DeleteInternetGateway",
-				"ec2:AttachInternetGateway",
-				"ec2:DetachInternetGateway",
-				"ec2:CreateRouteTable",
-				"ec2:DeleteRouteTable",
-				"ec2:CreateRoute",
-				"ec2:DeleteRoute",
-				"ec2:AssociateRouteTable",
-				"ec2:DisassociateRouteTable",
-				"ec2:DisassociateAddress",
-				"ec2:CreateSecurityGroup",
-				"ec2:DeleteSecurityGroup",
-				"ec2:AuthorizeSecurityGroupIngress",
-				"ec2:AuthorizeSecurityGroupEgress",
-				"ec2:RevokeSecurityGroupIngress",
-				"ec2:RevokeSecurityGroupEgress",
-				"ec2:DescribeSecurityGroups",
-				"ec2:DescribeAvailabilityZones",
-				"ec2:DescribeInternetGateways",
-				"ec2:DescribeRouteTables",
-				"ec2:CreateTags",
-				"ec2:DescribeTags",
-				"ec2:AllocateAddress",
-				"ec2:ReleaseAddress",
-				"ec2:DescribeAddresses",
-				"ec2:DescribeVpcAttribute",
-				"ec2:DescribeNatGateways",
-				"ec2:DeleteNatGateway",
-				"ec2:DescribeAddressesAttribute",
-				"ec2:DescribeAccountAttributes"
-			],
-			"Resource": "*"
-		},
-		{
-			"Sid": "LoadBalancerResources",
-			"Effect": "Allow",
-			"Action": [
-				"elasticloadbalancing:CreateLoadBalancer",
-				"elasticloadbalancing:DeleteLoadBalancer",
-				"elasticloadbalancing:DescribeLoadBalancers",
-				"elasticloadbalancing:CreateTargetGroup",
-				"elasticloadbalancing:DeleteTargetGroup",
-				"elasticloadbalancing:DescribeTargetGroups",
-				"elasticloadbalancing:DescribeTargetGroupAttributes",
-				"elasticloadbalancing:CreateListener",
-				"elasticloadbalancing:DeleteListener",
-				"elasticloadbalancing:DescribeListeners",
-				"elasticloadbalancing:ModifyTargetGroupAttributes",
-				"elasticloadbalancing:AddTags",
-				"elasticloadbalancing:DescribeTags",
-				"elasticloadbalancing:ModifyLoadBalancerAttributes",
-				"elasticloadbalancing:DescribeLoadBalancerAttributes",
-				"elasticloadbalancing:DescribeListenerAttributes"
-			],
-			"Resource": "*"
-		},
-		{
-			"Sid": "S3ModelStorage",
-			"Effect": "Allow",
-			"Action": [
-				"s3:GetObject",
-				"s3:PutObject",
-				"s3:DeleteObject",
-				"s3:AbortMultipartUpload",
-				"s3:ListMultipartUploadParts"
-			],
-			"Resource": "arn:aws:s3:::tai-lam-poc-models/*"
-		},
-		    {
-			"Sid": "ListAndMultipartBucketActions",
-			"Effect": "Allow",
-			"Action": [
-				"s3:ListBucket",
-				"s3:ListBucketMultipartUploads"
-			],
-			"Resource": "arn:aws:s3:::tai-lam-poc-models"
-			},
-		{
-			"Sid": "DynamoDBTables",
-			"Effect": "Allow",
-			"Action": [
-				"dynamodb:CreateTable",
-				"dynamodb:DeleteTable",
-				"dynamodb:DescribeTable",
-				"dynamodb:UpdateTable",
-				"dynamodb:TagResource",
-				"dynamodb:ListTagsOfResource",
-				"dynamodb:DescribeContinuousBackups",
-				"dynamodb:DescribeTimeToLive"
-			],
-			"Resource": [
-				"arn:aws:dynamodb:ap-east-1:*:table/tai-lam-poc-traffic",
-				"arn:aws:dynamodb:ap-east-1:*:table/tai-lam-poc-tolls"
-			]
-		},
-		{
-			"Sid": "IAMRoleManagement",
-			"Effect": "Allow",
-			"Action": [
-				"iam:CreateRole",
-				"iam:DeleteRole",
-				"iam:GetRole",
-				"iam:ListRolePolicies",
-				"iam:ListGroupsForUser",
-				"iam:CreatePolicy",
-				"iam:DeletePolicy",
-				"iam:GetPolicy",
-				"iam:GetPolicyVersion",
-				"iam:ListPolicyVersions",
-				"iam:AttachRolePolicy",
-				"iam:DetachRolePolicy",
-				"iam:CreateUser",
-				"iam:DeleteUser",
-				"iam:GetUser",
-				"iam:CreateAccessKey",
-				"iam:DeleteAccessKey",
-				"iam:AttachUserPolicy",
-				"iam:DetachUserPolicy",
-				"iam:TagRole",
-				"iam:TagUser",
-				"iam:TagPolicy",
-				"iam:PassRole",
-				"iam:CreateServiceLinkedRole",
-				"iam:ListAttachedRolePolicies",
-				"iam:ListAccessKeys",
-				"iam:ListInstanceProfilesForRole",
-				"iam:PutRolePolicy",
-				"iam:ListAttachedUserPolicies",
-				"iam:GetRolePolicy",
-				"iam:DeleteRolePolicy"
-			],
-			"Resource": [
-				"arn:aws:iam::*:role/tai-lam-poc-*",
-				"arn:aws:iam::*:policy/tai-lam-poc-*",
-				"arn:aws:iam::*:policy/TaiLam*",
-				"arn:aws:iam::*:user/tailam_*",
-				"arn:aws:iam::*:role/aws-service-role/elasticloadbalancing.amazonaws.com/AWSServiceRoleForElasticLoadBalancing"
-			]
-		},
-		{
-			"Sid": "LambdaFunctions",
-			"Effect": "Allow",
-			"Action": [
-				"lambda:CreateFunction",
-				"lambda:DeleteFunction",
-				"lambda:GetFunction",
-				"lambda:ListTags",
-				"lambda:UpdateFunctionCode",
-				"lambda:UpdateFunctionConfiguration",
-				"lambda:AddPermission",
-				"lambda:RemovePermission",
-				"lambda:TagResource",
-				"lambda:ListVersionsByFunction",
-				"lambda:GetFunctionCodeSigningConfig",
-				"lambda:GetPolicy",
-				"lambda:InvokeFunction"
-			],
-			"Resource": [
-				"arn:aws:lambda:ap-east-1:027354322570:function:tai-lam-poc-*",
-				"arn:aws:lambda:ap-east-1:027354322570:function:tai-lam-poc-*:*"
-			]
-		},
-		{
-			"Sid": "CloudWatchLogs",
-			"Effect": "Allow",
-			"Action": [
-				"logs:CreateLogGroup",
-				"logs:DeleteLogGroup",
-				"logs:DescribeLogGroups",
-				"logs:PutRetentionPolicy",
-				"logs:TagLogGroup",
-				"logs:ListTagsForResource"
-			],
-			"Resource": "arn:aws:logs:*:*:*"
-		},
-		{
-			"Sid": "APIGatewayManagement",
-			"Effect": "Allow",
-			"Action": [
-				"apigateway:GET",
-				"apigateway:POST",
-				"apigateway:PUT",
-				"apigateway:DELETE",
-				"apigateway:PATCH"
-			],
-			"Resource": [
-				"arn:aws:apigateway:ap-east-1::/restapis/*",
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "TerraformStateManagement",
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObject",
+                "s3:PutObject",
+                "s3:DeleteObject",
+                "s3:ListBucket",
+                "dynamodb:GetItem",
+                "dynamodb:PutItem",
+                "dynamodb:DeleteItem"
+            ],
+            "Resource": [
+                "arn:aws:s3:::tai-lam-terraform-state-hk",
+                "arn:aws:s3:::tai-lam-terraform-state-hk/*"
+            ]
+        },
+        {
+            "Sid": "ECSInfrastructure",
+            "Effect": "Allow",
+            "Action": [
+                "ecs:CreateCluster",
+                "ecs:DeleteCluster",
+                "ecs:DescribeClusters",
+                "ecs:CreateService",
+                "ecs:DeleteService",
+                "ecs:UpdateService",
+                "ecs:DescribeServices",
+                "ecs:RegisterTaskDefinition",
+                "ecs:DeregisterTaskDefinition",
+                "ecs:DescribeTaskDefinition",
+                "ecs:TagResource"
+            ],
+            "Resource": [
+                "arn:aws:ecs:ap-east-1:*:cluster/tai-lam-poc-*",
+                "arn:aws:ecs:ap-east-1:*:service/tai-lam-poc-*/*",
+                "arn:aws:ecs:ap-east-1:*:task-definition/tai-lam-poc-*:*"
+            ]
+        },
+        {
+            "Sid": "NetworkingResources",
+            "Effect": "Allow",
+            "Action": [
+                "ec2:DescribeVpcs",
+                "ec2:DescribeNetworkInterfaces",
+                "ec2:CreateSubnet",
+                "ec2:DeleteSubnet",
+                "ec2:DescribeSubnets",
+                "ec2:CreateInternetGateway",
+                "ec2:DeleteInternetGateway",
+                "ec2:AttachInternetGateway",
+                "ec2:DetachInternetGateway",
+                "ec2:CreateRouteTable",
+                "ec2:DeleteRouteTable",
+                "ec2:CreateRoute",
+                "ec2:DeleteRoute",
+                "ec2:AssociateRouteTable",
+                "ec2:DisassociateRouteTable",
+                "ec2:DisassociateAddress",
+                "ec2:CreateSecurityGroup",
+                "ec2:DeleteSecurityGroup",
+                "ec2:AuthorizeSecurityGroupIngress",
+                "ec2:AuthorizeSecurityGroupEgress",
+                "ec2:RevokeSecurityGroupIngress",
+                "ec2:RevokeSecurityGroupEgress",
+                "ec2:DescribeSecurityGroups",
+                "ec2:DescribeAvailabilityZones",
+                "ec2:DescribeInternetGateways",
+                "ec2:DescribeRouteTables",
+                "ec2:CreateTags",
+                "ec2:DescribeTags",
+                "ec2:AllocateAddress",
+                "ec2:ReleaseAddress",
+                "ec2:DescribeAddresses",
+                "ec2:DescribeVpcAttribute",
+                "ec2:DescribeNatGateways",
+                "ec2:DeleteNatGateway",
+                "ec2:DescribeAddressesAttribute",
+                "ec2:DescribeAccountAttributes",
+                "ec2:DescribeRegions"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "LoadBalancerResources",
+            "Effect": "Allow",
+            "Action": [
+                "elasticloadbalancing:CreateLoadBalancer",
+                "elasticloadbalancing:DeleteLoadBalancer",
+                "elasticloadbalancing:DescribeLoadBalancers",
+                "elasticloadbalancing:CreateTargetGroup",
+                "elasticloadbalancing:DeleteTargetGroup",
+                "elasticloadbalancing:DescribeTargetGroups",
+                "elasticloadbalancing:DescribeTargetGroupAttributes",
+                "elasticloadbalancing:CreateListener",
+                "elasticloadbalancing:DeleteListener",
+                "elasticloadbalancing:DescribeListeners",
+                "elasticloadbalancing:ModifyTargetGroupAttributes",
+                "elasticloadbalancing:AddTags",
+                "elasticloadbalancing:DescribeTags",
+                "elasticloadbalancing:ModifyLoadBalancerAttributes",
+                "elasticloadbalancing:DescribeLoadBalancerAttributes",
+                "elasticloadbalancing:DescribeListenerAttributes",
+                "elasticloadbalancing:DescribeCapacityReservation",
+                "elasticloadbalancing:DescribeTargetHealth"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "S3ModelStorage",
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObject",
+                "s3:PutObject",
+                "s3:DeleteObject",
+                "s3:AbortMultipartUpload",
+                "s3:ListMultipartUploadParts"
+            ],
+            "Resource": "arn:aws:s3:::tai-lam-poc-models/*"
+        },
+        {
+            "Sid": "ListAndMultipartBucketActions",
+            "Effect": "Allow",
+            "Action": [
+                "s3:ListBucket",
+                "s3:ListBucketMultipartUploads"
+            ],
+            "Resource": "arn:aws:s3:::tai-lam-poc-models"
+        },
+        {
+            "Sid": "DynamoDBTables",
+            "Effect": "Allow",
+            "Action": [
+                "dynamodb:CreateTable",
+                "dynamodb:DeleteTable",
+                "dynamodb:DescribeTable",
+                "dynamodb:UpdateTable",
+                "dynamodb:TagResource",
+                "dynamodb:ListTagsOfResource",
+                "dynamodb:DescribeContinuousBackups",
+                "dynamodb:DescribeTimeToLive"
+            ],
+            "Resource": [
+                "arn:aws:dynamodb:ap-east-1:*:table/tai-lam-poc-traffic",
+                "arn:aws:dynamodb:ap-east-1:*:table/tai-lam-poc-tolls"
+            ]
+        },
+        {
+            "Sid": "IAMRoleManagement",
+            "Effect": "Allow",
+            "Action": [
+                "iam:CreateRole",
+                "iam:DeleteRole",
+                "iam:GetRole",
+                "iam:ListRolePolicies",
+                "iam:ListGroupsForUser",
+                "iam:CreatePolicy",
+                "iam:DeletePolicy",
+                "iam:GetPolicy",
+                "iam:GetPolicyVersion",
+                "iam:ListPolicyVersions",
+                "iam:AttachRolePolicy",
+                "iam:DetachRolePolicy",
+                "iam:CreateUser",
+                "iam:DeleteUser",
+                "iam:GetUser",
+                "iam:CreateAccessKey",
+                "iam:DeleteAccessKey",
+                "iam:AttachUserPolicy",
+                "iam:DetachUserPolicy",
+                "iam:TagRole",
+                "iam:TagUser",
+                "iam:TagPolicy",
+                "iam:PassRole",
+                "iam:CreateServiceLinkedRole",
+                "iam:ListAttachedRolePolicies",
+                "iam:ListAccessKeys",
+                "iam:ListInstanceProfilesForRole",
+                "iam:PutRolePolicy",
+                "iam:ListAttachedUserPolicies",
+                "iam:GetRolePolicy",
+                "iam:DeleteRolePolicy",
+                "iam:CreatePolicyVersion",
+                "iam:UpdateAssumeRolePolicy",
+                "iam:GetServiceLastAccessedDetails",
+                "iam:GetServiceLinkedRoleDeletionStatus",
+                "iam:GetOpenIDConnectProvider",
+                "iam:CreateOpenIDConnectProvider"
+            ],
+            "Resource": [
+                "arn:aws:iam::*:role/tai-lam-poc-*",
+                "arn:aws:iam::*:policy/tai-lam-poc-*",
+                "arn:aws:iam::*:policy/TaiLam*",
+                "arn:aws:iam::*:user/tailam_*",
+                "arn:aws:iam::*:role/aws-service-role/elasticloadbalancing.amazonaws.com/AWSServiceRoleForElasticLoadBalancing"
+            ]
+        },
+        {
+            "Sid": "LambdaFunctions",
+            "Effect": "Allow",
+            "Action": [
+                "lambda:CreateFunction",
+                "lambda:DeleteFunction",
+                "lambda:GetFunction",
+                "lambda:ListTags",
+                "lambda:UpdateFunctionCode",
+                "lambda:UpdateFunctionConfiguration",
+                "lambda:AddPermission",
+                "lambda:RemovePermission",
+                "lambda:TagResource",
+                "lambda:ListVersionsByFunction",
+                "lambda:GetFunctionCodeSigningConfig",
+                "lambda:GetPolicy",
+                "lambda:InvokeFunction"
+            ],
+            "Resource": [
+                "arn:aws:lambda:ap-east-1:027354322570:function:tai-lam-poc-*",
+                "arn:aws:lambda:ap-east-1:027354322570:function:tai-lam-poc-*:*"
+            ]
+        },
+        {
+            "Sid": "CloudWatchLogs",
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogGroup",
+                "logs:DeleteLogGroup",
+                "logs:DescribeLogGroups",
+                "logs:PutRetentionPolicy",
+                "logs:TagLogGroup",
+                "logs:ListTagsForResource"
+            ],
+            "Resource": "arn:aws:logs:*:*:*"
+        },
+        {
+            "Sid": "APIGatewayManagement",
+            "Effect": "Allow",
+            "Action": [
+                "apigateway:GET",
+                "apigateway:POST",
+                "apigateway:PUT",
+                "apigateway:DELETE",
+                "apigateway:PATCH"
+            ],
+            "Resource": [
+                "arn:aws:apigateway:ap-east-1::/restapis/*",
                 "arn:aws:apigateway:ap-east-1::/restapis/*/resources/*"
-			]
-		}
-	]
+            ]
+        },
+        {
+            "Sid": "ACMCertificateManagement",
+            "Effect": "Allow",
+            "Action": [
+                "acm:DescribeCertificate",
+                "acm:RequestCertificate"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "CloudFormationDescribe",
+            "Effect": "Allow",
+            "Action": [
+                "cloudformation:DescribeStackResources"
+            ],
+            "Resource": "*"
+        }
+    ]
 }
 ```
 5. **Save credentials** for Terraform
