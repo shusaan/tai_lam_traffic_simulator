@@ -89,6 +89,9 @@ app.index_string = '''
             .btn-secondary { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
             .btn-tertiary { background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
             .btn-primary:hover, .btn-secondary:hover, .btn-tertiary:hover { transform: translateY(-1px); }
+            .btn-primary:active, .btn-secondary:active, .btn-tertiary:active { transform: translateY(1px); box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); }
+            .btn-primary:disabled, .btn-secondary:disabled, .btn-tertiary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+            .btn-primary:disabled:hover, .btn-secondary:disabled:hover, .btn-tertiary:disabled:hover { transform: none; }
             .status-section { background: rgba(255,255,255,0.05); padding: 20px; border-radius: 12px; }
             .status-box { }
             .status-item { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem; }
@@ -179,9 +182,9 @@ app.layout = html.Div([
                 style={'color': '#000000', 'backgroundColor': '#ffffff'}
             ),
             html.Div([
-                html.Button('▶️ Start', id='start-btn', n_clicks=0, className="btn-primary"),
-                html.Button('⏹️ Stop', id='stop-btn', n_clicks=0, className="btn-secondary"),
-                html.Button('🔄 Reset', id='reset-btn', n_clicks=0, className="btn-tertiary"),
+                html.Button('▶️ Start', id='start-btn', n_clicks=0, className="btn-primary", disabled=False),
+                html.Button('⏹️ Stop', id='stop-btn', n_clicks=0, className="btn-secondary", disabled=True),
+                html.Button('🔄 Reset', id='reset-btn', n_clicks=0, className="btn-tertiary", disabled=False),
             ], className="button-grid"),
             
             html.Div([
@@ -272,7 +275,8 @@ app.layout = html.Div([
 
 # Callbacks (same as before)
 @app.callback(
-    [Output('simulation-store', 'data'), Output('status-display', 'children')],
+    [Output('simulation-store', 'data'), Output('status-display', 'children'),
+     Output('start-btn', 'disabled'), Output('stop-btn', 'disabled'), Output('reset-btn', 'disabled')],
     [Input('interval-component', 'n_intervals'), Input('start-btn', 'n_clicks'),
      Input('stop-btn', 'n_clicks'), Input('reset-btn', 'n_clicks')],
     [State('scenario-dropdown', 'value'), State('simulation-store', 'data')]
@@ -282,7 +286,9 @@ def update_simulation(n_intervals, start_clicks, stop_clicks, reset_clicks, scen
     
     ctx = dash.callback_context
     if not ctx.triggered:
-        return stored_data, get_status_display(stored_data)
+        # Return button states based on current simulation status
+        has_data = len(stored_data) > 0
+        return stored_data, get_status_display(stored_data), has_data, not has_data, False
     
     trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
     
@@ -318,7 +324,13 @@ def update_simulation(n_intervals, start_clicks, stop_clicks, reset_clicks, scen
         simulation_thread.daemon = True
         simulation_thread.start()
     
-    return stored_data, get_status_display(stored_data)
+    # Button states based on simulation status
+    has_data = len(stored_data) > 0
+    start_disabled = has_data  # Disable start if simulation has data
+    stop_disabled = not has_data  # Disable stop if no simulation data
+    reset_disabled = False  # Reset always available
+    
+    return stored_data, get_status_display(stored_data), start_disabled, stop_disabled, reset_disabled
 
 @app.callback(
     [Output('revenue-kpi', 'children'), Output('traffic-kpi', 'children'),
@@ -451,41 +463,72 @@ def update_revenue_chart(data):
 @app.callback(Output('traffic-map', 'figure'), [Input('simulation-store', 'data')])
 def update_traffic_map(data):
     fig = go.Figure()
+    
+    # Use same colors as traffic flow chart
+    road_colors = ['#FF6B6B', '#4ECDC4', '#45B7D1']  # Red, Teal, Blue
+    road_names_list = ['tai_lam_tunnel', 'tuen_mun_road', 'nt_circular_road']
+    road_labels = ['Tai Lam Tunnel', 'Tuen Mun Road', 'NT Circular Road']
+    
     if data:
         latest_data = data[-1]
         roads_data = latest_data.get('roads', {})
+    else:
+        roads_data = {}
+    
+    # Create 3 horizontal lines
+    for i, (road_name, label, color) in enumerate(zip(road_names_list, road_labels, road_colors)):
+        congestion = roads_data.get(road_name, {}).get('congestion', 0)
+        width = max(8, congestion * 40)  # Thicker lines for better visibility
+        y_position = 2 - i  # Top to bottom: 2, 1, 0
         
-        # Use same colors as traffic flow chart
-        road_colors = {
-            'tai_lam_tunnel': '#FF6B6B',      # Red (same as traffic flow)
-            'tuen_mun_road': '#4ECDC4',       # Teal (same as traffic flow)
-            'nt_circular_road': '#45B7D1'     # Blue (same as traffic flow)
-        }
+        # Horizontal line
+        fig.add_trace(go.Scatter(
+            x=[0, 10], 
+            y=[y_position, y_position],
+            mode='lines',
+            line=dict(width=width, color=color),
+            name=label,
+            showlegend=False,
+            hovertemplate=f"<b>{label}</b><br>Congestion: {congestion:.1%}<extra></extra>"
+        ))
         
-        for road_name, road_config in ROADS.items():
-            congestion = roads_data.get(road_name, {}).get('congestion', 0)
-            color = road_colors.get(road_name, '#6B7280')  # Default gray
-            width = max(3, congestion * 12)
-            
-            lats = [coord[0] for coord in road_config.coordinates]
-            lons = [coord[1] for coord in road_config.coordinates]
-            
-            fig.add_trace(go.Scatter(
-                x=lons, y=lats,
-                mode='lines',
-                line=dict(width=width, color=color),
-                name=road_config.name,
-                hovertemplate=f"<b>{road_config.name}</b><br>Congestion: {congestion:.1%}<extra></extra>"
-            ))
+        # Road label
+        fig.add_annotation(
+            x=-0.5,
+            y=y_position,
+            text=label,
+            showarrow=False,
+            font=dict(size=12, color='#1e293b'),
+            xanchor='right',
+            yanchor='middle'
+        )
+        
+        # Congestion percentage
+        fig.add_annotation(
+            x=10.5,
+            y=y_position,
+            text=f"{congestion:.0%}",
+            showarrow=False,
+            font=dict(size=11, color='#64748b'),
+            xanchor='left',
+            yanchor='middle'
+        )
     
     fig.update_layout(
-        title="Hong Kong Traffic Map",
-        xaxis_title="Longitude",
-        yaxis_title="Latitude",
-        height=400,
-        margin=dict(l=20, r=20, t=40, b=20),
+        title="Real-time Traffic Congestion",
+        height=300,
+        margin=dict(l=120, r=80, t=40, b=20),
         plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)'
+        paper_bgcolor='rgba(0,0,0,0)',
+        xaxis=dict(
+            visible=False,
+            range=[-1, 11]
+        ),
+        yaxis=dict(
+            visible=False,
+            range=[-0.5, 2.5]
+        ),
+        font=dict(family='Inter', size=12)
     )
     return fig
 
