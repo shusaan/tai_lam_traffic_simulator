@@ -17,7 +17,7 @@ Route53   Target         NAT Gateway            DynamoDB
 (DNS)     Group         (Outbound)             (Data)
 ```
 
-**AWS Services**: ECS Fargate, ALB, S3, DynamoDB, Lambda, API Gateway, NAT Gateway, CloudWatch (Hong Kong region)
+**AWS Services**: ECS Fargate, ALB, S3, DynamoDB, Lambda (AI), API Gateway, NAT Gateway, CloudWatch (Hong Kong region)
 
 ## 🚀 Quick Start
 
@@ -388,17 +388,21 @@ aws ecs describe-services --cluster tai-lam-poc-cluster --services tai-lam-poc-s
 
 ### AI Pricing
 - **🤖 ML Model**: Trained on real Hong Kong data (stored in S3)
-- **📊 Optimization**: Balances revenue + traffic flow
+- **🧠 Reinforcement Learning**: Q-learning agent for continuous optimization
+- **☁️ Lambda API**: AI-powered toll calculation via AWS Lambda
+- **📊 Optimization**: Balances revenue + traffic flow + congestion
 - **⚡ Range**: HK$18-55 dynamic pricing
 - **🔄 Fallback**: Rule-based backup system
 - **📊 Data Storage**: Real-time data in DynamoDB tables
+- **🔄 Continuous Learning**: Model updates from latest traffic patterns
 
 ## ⚙️ Configuration
 
 ### AWS Resources (Auto-Configured)
 - **S3 Bucket**: `tai-lam-poc-models` (ML model storage)
 - **DynamoDB Tables**: `tai-lam-poc-traffic`, `tai-lam-poc-tolls`
-- **API Gateway**: Toll pricing API endpoint
+- **Lambda Function**: AI toll calculation (512MB, 60s timeout)
+- **API Gateway**: AI toll pricing API endpoint
 - **Region**: Hong Kong (`ap-east-1`)
 
 ### Toll Pricing
@@ -441,8 +445,8 @@ tai_lam_traffic_simulator/
 
 - `GET /health` - Health check
 - `GET /` - Dashboard
-- `GET /toll/current` - Current toll price
-- `POST /toll/calculate` - AI recommendation
+- `GET /toll` - AI-calculated toll price from Lambda
+- `POST /toll` - AI toll recommendation with traffic data
 
 ## 🔒 Security & Production Readiness
 

@@ -1,5 +1,3 @@
-"""Fixed modern dashboard for Tai Lam Traffic Simulator"""
-
 import dash
 from dash import dcc, html, Input, Output, State
 import plotly.graph_objs as go
@@ -14,6 +12,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from simulator.traffic_simulator import TrafficSimulator
 from simulator.trained_pricing_model import TrainedPricingModel as HybridPricingModel
+from rl_agent.q_learning_agent import QLearningTollAgent
 from simple_data_processor import TrafficDataProcessor
 from config import SCENARIOS, ROADS, TOLL_CONFIG
 
@@ -21,6 +20,7 @@ from config import SCENARIOS, ROADS, TOLL_CONFIG
 simulator = TrafficSimulator()
 pricing_model = HybridPricingModel()
 data_processor = TrafficDataProcessor()
+rl_agent = QLearningTollAgent()
 
 # Initialize Dash app with external stylesheets
 app = dash.Dash(__name__, external_stylesheets=[
@@ -147,7 +147,7 @@ app.layout = html.Div([
             html.H2("Tai Lam AI", className="sidebar-title"),
             html.P("Traffic Optimizer", className="sidebar-subtitle")
         ], className="sidebar-header"),
-
+        
         html.Div([
             html.H4("🎮 Controls", className="section-title"),
             html.Label("Scenario", className="input-label"),
@@ -168,14 +168,14 @@ app.layout = html.Div([
                 html.Button('⏹️ Stop', id='stop-btn', n_clicks=0, className="btn-secondary"),
                 html.Button('🔄 Reset', id='reset-btn', n_clicks=0, className="btn-tertiary"),
             ], className="button-grid"),
-
+            
             html.Div([
                 html.H4("📊 Status", className="section-title"),
                 html.Div(id="status-display", className="status-box")
             ], className="status-section")
         ], className="sidebar-content")
     ], className="sidebar"),
-
+    
     # Main content
     html.Div([
         # Header
@@ -188,7 +188,7 @@ app.layout = html.Div([
                 html.Span("🇭🇰 Hong Kong", className="badge")
             ], className="badge-container")
         ], className="main-header"),
-
+        
         # KPI Grid
         html.Div([
             html.Div([
@@ -198,7 +198,7 @@ app.layout = html.Div([
                     html.P("Revenue", className="kpi-label")
                 ])
             ], className="kpi-card revenue"),
-
+            
             html.Div([
                 html.Div("🚗", className="kpi-icon"),
                 html.Div([
@@ -206,7 +206,7 @@ app.layout = html.Div([
                     html.P("Traffic Flow", className="kpi-label")
                 ])
             ], className="kpi-card traffic"),
-
+            
             html.Div([
                 html.Div("⚡", className="kpi-icon"),
                 html.Div([
@@ -214,7 +214,7 @@ app.layout = html.Div([
                     html.P("AI Toll Price", className="kpi-label")
                 ])
             ], className="kpi-card toll"),
-
+            
             html.Div([
                 html.Div("🎯", className="kpi-icon"),
                 html.Div([
@@ -223,33 +223,33 @@ app.layout = html.Div([
                 ])
             ], className="kpi-card efficiency")
         ], className="kpi-grid"),
-
+        
         # Charts Grid
         html.Div([
             html.Div([
                 dcc.Graph(id='traffic-flow-chart', className="chart")
             ], className="chart-card"),
-
+            
             html.Div([
                 dcc.Graph(id='toll-price-chart', className="chart")
             ], className="chart-card"),
-
+            
             html.Div([
                 dcc.Graph(id='congestion-heatmap', className="chart")
             ], className="chart-card"),
-
+            
             html.Div([
                 dcc.Graph(id='revenue-chart', className="chart")
             ], className="chart-card")
         ], className="charts-grid"),
-
+        
         # Map Section
         html.Div([
             html.H3("🗺️ Real-time Hong Kong Traffic Map", className="map-title"),
             dcc.Graph(id='traffic-map', className="map-chart")
         ], className="map-section")
     ], className="main-content"),
-
+    
     # Auto-refresh
     dcc.Interval(id='interval-component', interval=2000, n_intervals=0),
     dcc.Store(id='simulation-store', data=[])
@@ -264,13 +264,13 @@ app.layout = html.Div([
 )
 def update_simulation(n_intervals, start_clicks, stop_clicks, reset_clicks, scenario, stored_data):
     global simulation_running, simulation_thread
-
+    
     ctx = dash.callback_context
     if not ctx.triggered:
         return stored_data, get_status_display()
-
+    
     trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
-
+    
     if trigger_id == 'start-btn' and not simulation_running:
         simulation_running = True
         simulation_thread = threading.Thread(target=run_simulation_background, args=(scenario,))
@@ -281,10 +281,10 @@ def update_simulation(n_intervals, start_clicks, stop_clicks, reset_clicks, scen
         simulation_running = False
         simulator.reset_simulation()
         stored_data = []
-
+    
     if simulation_running and len(simulation_data) > len(stored_data):
         stored_data = simulation_data.copy()
-
+    
     return stored_data, get_status_display()
 
 @app.callback(
@@ -295,7 +295,7 @@ def update_simulation(n_intervals, start_clicks, stop_clicks, reset_clicks, scen
 def update_kpis(data):
     if not data:
         return "HK$0", "0", f"HK${TOLL_CONFIG.base_price:.2f}", "0%"
-
+    
     latest = data[-1]
     revenue = f"HK${latest['revenue']:.0f}"
     total_vehicles = sum(latest['roads'][road]['vehicles'] for road in latest['roads'])
@@ -303,7 +303,7 @@ def update_kpis(data):
     toll = f"HK${latest['toll_price']:.2f}"
     congestions = [latest['roads'][road]['congestion'] for road in latest['roads']]
     efficiency = f"{(1 - (max(congestions) - min(congestions))) * 100:.0f}%"
-
+    
     return revenue, traffic, toll, efficiency
 
 @app.callback(Output('traffic-flow-chart', 'figure'), [Input('simulation-store', 'data')])
@@ -313,7 +313,7 @@ def update_traffic_flow_chart(data):
         df = pd.DataFrame(data)
         df['timestamp'] = pd.to_datetime(df['timestamp'])
         colors = ['#FF6B6B', '#4ECDC4', '#45B7D1']
-
+        
         for i, road_name in enumerate(['tai_lam_tunnel', 'tuen_mun_road', 'nt_circular_road']):
             vehicles = [row['roads'][road_name]['vehicles'] for row in data]
             fig.add_trace(go.Scatter(
@@ -323,7 +323,7 @@ def update_traffic_flow_chart(data):
                 line=dict(width=3, color=colors[i]),
                 marker=dict(size=6)
             ))
-
+    
     fig.update_layout(
         title="🚗 Traffic Flow",
         plot_bgcolor='rgba(0,0,0,0)',
@@ -350,7 +350,7 @@ def update_toll_price_chart(data):
             fill='tonexty',
             fillcolor='rgba(255, 107, 107, 0.1)'
         ))
-
+    
     fig.update_layout(
         title="⚡ AI Toll Pricing",
         plot_bgcolor='rgba(0,0,0,0)',
@@ -369,15 +369,15 @@ def update_congestion_heatmap(data):
         roads_data = latest_data.get('roads', {})
         road_names = list(ROADS.keys())
         congestion_levels = [roads_data.get(road, {}).get('congestion', 0) for road in road_names]
-
+        
         fig.add_trace(go.Bar(
             x=[ROADS[road].name for road in road_names],
             y=congestion_levels,
-            marker_color=['#EF4444' if c > 0.8 else '#F97316' if c > 0.5 else '#22C55E' for c in congestion_levels],
+            marker_color=['#DC2626' if c > 0.8 else '#EA580C' if c > 0.6 else '#F59E0B' if c > 0.4 else '#16A34A' for c in congestion_levels],
             text=[f'{c:.1%}' for c in congestion_levels],
             textposition='auto'
         ))
-
+    
     fig.update_layout(
         title="🚦 Congestion Levels",
         plot_bgcolor='rgba(0,0,0,0)',
@@ -402,7 +402,7 @@ def update_revenue_chart(data):
             fill='tonexty',
             fillcolor='rgba(107, 207, 127, 0.2)'
         ))
-
+    
     fig.update_layout(
         title="💰 Revenue Growth",
         plot_bgcolor='rgba(0,0,0,0)',
@@ -418,15 +418,15 @@ def update_traffic_map(data):
     if data:
         latest_data = data[-1]
         roads_data = latest_data.get('roads', {})
-
+        
         for road_name, road_config in ROADS.items():
             congestion = roads_data.get(road_name, {}).get('congestion', 0)
             color = '#1E40AF' if congestion > 0.8 else '#3B82F6' if congestion > 0.5 else '#60A5FA'
             width = max(3, congestion * 12)
-
+            
             lats = [coord[0] for coord in road_config.coordinates]
             lons = [coord[1] for coord in road_config.coordinates]
-
+            
             fig.add_trace(go.Scatter(
                 x=lons, y=lats,
                 mode='lines',
@@ -434,7 +434,7 @@ def update_traffic_map(data):
                 name=road_config.name,
                 hovertemplate=f"<b>{road_config.name}</b><br>Congestion: {congestion:.1%}<extra></extra>"
             ))
-
+    
     fig.update_layout(
         title="Hong Kong Traffic Map",
         xaxis_title="Longitude",
@@ -453,7 +453,7 @@ def get_status_display():
     time_str = f"{hk_time.strftime('%H:%M:%S')} HKT"
     toll = f"HK${simulator.toll_price:.2f}"
     revenue = f"HK${simulator.revenue:.2f}"
-
+    
     return html.Div([
         html.Div([html.Span("Status"), html.Span(status)], className="status-item"),
         html.Div([html.Span("Time"), html.Span(time_str)], className="status-item"),
@@ -464,23 +464,44 @@ def get_status_display():
 def run_simulation_background(scenario):
     global simulation_data
     prev_state = None
-
+    prev_toll = simulator.toll_price
+    
     while simulation_running:
         traffic_snapshot = simulator.simulate_step(scenario)
         simulation_data.append(traffic_snapshot)
-
+        
         if len(simulation_data) % 15 == 0:
             current_state = simulator.get_current_state()
-            new_toll = pricing_model.get_price_recommendation(current_state)
+            
+            # Use RL agent for toll recommendation
+            rl_toll, rl_action = rl_agent.get_toll_recommendation(current_state, simulator.toll_price)
+            
+            # Fallback to hybrid model if needed
+            hybrid_toll = pricing_model.get_price_recommendation(current_state)
+            
+            # Use RL recommendation with 70% probability, hybrid 30%
+            import random
+            if random.random() < 0.7:
+                new_toll = rl_toll
+            else:
+                new_toll = hybrid_toll
+            
             simulator.update_toll_price(new_toll)
-
+            
+            # Train RL agent
             if prev_state:
+                reward = rl_agent.calculate_reward(prev_state, current_state, rl_action, new_toll)
+                rl_agent.train_step(prev_state, rl_action, reward, current_state)
+                
+                # Train hybrid model
                 pricing_model.train_step(prev_state, simulator.toll_price, current_state)
+            
             prev_state = current_state
-
+            prev_toll = new_toll
+        
         if len(simulation_data) > 1000:
             simulation_data = simulation_data[-1000:]
-
+        
         time.sleep(1)
 
 if __name__ == '__main__':

@@ -119,12 +119,19 @@ resource "aws_iam_role_policy" "lambda_policy" {
           aws_dynamodb_table.traffic_data.arn,
           aws_dynamodb_table.toll_history.arn
         ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject"
+        ]
+        Resource = "${aws_s3_bucket.model_storage.arn}/*"
       }
     ]
   })
 }
 
-# Lambda function (Free Tier: 400,000 GB-seconds)
+# Lambda function with AI model support
 resource "aws_lambda_function" "toll_api" {
   filename         = "toll_api.zip"
   function_name    = "${var.project_name}-toll-api"
@@ -137,8 +144,9 @@ resource "aws_lambda_function" "toll_api" {
 
   environment {
     variables = {
-      TRAFFIC_TABLE = aws_dynamodb_table.traffic_data.name
-      TOLL_TABLE    = aws_dynamodb_table.toll_history.name
+      MODEL_S3_BUCKET = aws_s3_bucket.model_storage.bucket
+      TRAFFIC_TABLE   = aws_dynamodb_table.traffic_data.name
+      TOLL_TABLE      = aws_dynamodb_table.toll_history.name
     }
   }
 
