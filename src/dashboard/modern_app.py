@@ -12,7 +12,12 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from simulator.traffic_simulator import TrafficSimulator
 from simulator.trained_pricing_model import TrainedPricingModel as HybridPricingModel
-from rl_agent.q_learning_agent import QLearningTollAgent
+try:
+    from rl_agent.q_learning_agent import QLearningTollAgent
+    RL_AVAILABLE = True
+except ImportError:
+    RL_AVAILABLE = False
+    print("RL agent not available in local mode")
 from simple_data_processor import TrafficDataProcessor
 from config import SCENARIOS, ROADS, TOLL_CONFIG
 
@@ -20,7 +25,17 @@ from config import SCENARIOS, ROADS, TOLL_CONFIG
 simulator = TrafficSimulator()
 pricing_model = HybridPricingModel()
 data_processor = TrafficDataProcessor()
-rl_agent = QLearningTollAgent()
+
+# Initialize RL agent only if available
+if RL_AVAILABLE:
+    try:
+        rl_agent = QLearningTollAgent()
+    except Exception as e:
+        print(f"RL agent initialization failed: {e}")
+        RL_AVAILABLE = False
+        rl_agent = None
+else:
+    rl_agent = None
 
 # Initialize Dash app with external stylesheets
 app = dash.Dash(__name__, external_stylesheets=[
@@ -251,7 +266,7 @@ app.layout = html.Div([
     ], className="main-content"),
     
     # Auto-refresh
-    dcc.Interval(id='interval-component', interval=2000, n_intervals=0),
+    dcc.Interval(id='interval-component', interval=3000, n_intervals=0),
     dcc.Store(id='simulation-store', data=[])
 ], className="app-container")
 
@@ -267,25 +282,43 @@ def update_simulation(n_intervals, start_clicks, stop_clicks, reset_clicks, scen
     
     ctx = dash.callback_context
     if not ctx.triggered:
-        return stored_data, get_status_display()
+        return stored_data, get_status_display(stored_data)
     
     trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
     
+    # Handle button clicks
     if trigger_id == 'start-btn' and not simulation_running:
+        print("Starting simulation...")
         simulation_running = True
-        simulation_thread = threading.Thread(target=run_simulation_background, args=(scenario,))
-        simulation_thread.start()
-    elif trigger_id == 'stop-btn':
+        if simulation_thread is None or not simulation_thread.is_alive():
+            simulation_thread = threading.Thread(target=run_simulation_background, args=(scenario,))
+            simulation_thread.daemon = True
+            simulation_thread.start()
+    elif trigger_id == 'stop-btn' and simulation_running:
+        print("Stopping simulation...")
         simulation_running = False
     elif trigger_id == 'reset-btn':
+        print("Resetting simulation...")
         simulation_running = False
+        if simulation_thread and simulation_thread.is_alive():
+            simulation_thread.join(timeout=1)
         simulator.reset_simulation()
         stored_data = []
+        global simulation_data
+        simulation_data = []
     
+    # Update data only if simulation is running and has new data
     if simulation_running and len(simulation_data) > len(stored_data):
         stored_data = simulation_data.copy()
     
-    return stored_data, get_status_display()
+    # Check if thread died unexpectedly
+    if simulation_running and (simulation_thread is None or not simulation_thread.is_alive()):
+        print("Thread died unexpectedly, restarting...")
+        simulation_thread = threading.Thread(target=run_simulation_background, args=(scenario,))
+        simulation_thread.daemon = True
+        simulation_thread.start()
+    
+    return stored_data, get_status_display(stored_data)
 
 @app.callback(
     [Output('revenue-kpi', 'children'), Output('traffic-kpi', 'children'),
@@ -370,10 +403,13 @@ def update_congestion_heatmap(data):
         road_names = list(ROADS.keys())
         congestion_levels = [roads_data.get(road, {}).get('congestion', 0) for road in road_names]
         
+        # Use same colors as traffic flow chart for each road
+        road_colors_congestion = ['#FF6B6B', '#4ECDC4', '#45B7D1']  # Same as traffic flow
+        
         fig.add_trace(go.Bar(
             x=[ROADS[road].name for road in road_names],
             y=congestion_levels,
-            marker_color=['#DC2626' if c > 0.8 else '#EA580C' if c > 0.6 else '#F59E0B' if c > 0.4 else '#16A34A' for c in congestion_levels],
+            marker_color=road_colors_congestion,
             text=[f'{c:.1%}' for c in congestion_levels],
             textposition='auto'
         ))
@@ -419,9 +455,16 @@ def update_traffic_map(data):
         latest_data = data[-1]
         roads_data = latest_data.get('roads', {})
         
+        # Use same colors as traffic flow chart
+        road_colors = {
+            'tai_lam_tunnel': '#FF6B6B',      # Red (same as traffic flow)
+            'tuen_mun_road': '#4ECDC4',       # Teal (same as traffic flow)
+            'nt_circular_road': '#45B7D1'     # Blue (same as traffic flow)
+        }
+        
         for road_name, road_config in ROADS.items():
             congestion = roads_data.get(road_name, {}).get('congestion', 0)
-            color = '#1E40AF' if congestion > 0.8 else '#3B82F6' if congestion > 0.5 else '#60A5FA'
+            color = road_colors.get(road_name, '#6B7280')  # Default gray
             width = max(3, congestion * 12)
             
             lats = [coord[0] for coord in road_config.coordinates]
@@ -446,13 +489,23 @@ def update_traffic_map(data):
     )
     return fig
 
-def get_status_display():
-    status = "🟢 Running" if simulation_running else "🔴 Stopped"
+def get_status_display(stored_data):
+    global simulation_running
+    
+    # Simple status based on data presence
+    if len(stored_data) > 0:
+        status = "🟢 Running"
+        latest = stored_data[-1]
+        toll = f"HK${latest.get('toll_price', 30.0):.2f}"
+        revenue = f"HK${latest.get('revenue', 0):.0f}"
+    else:
+        status = "🔴 Stopped"
+        toll = "HK$30.00"
+        revenue = "HK$0"
+    
     # Use Hong Kong timezone
     hk_time = datetime.now(ZoneInfo("Asia/Hong_Kong"))
     time_str = f"{hk_time.strftime('%H:%M:%S')} HKT"
-    toll = f"HK${simulator.toll_price:.2f}"
-    revenue = f"HK${simulator.revenue:.2f}"
     
     return html.Div([
         html.Div([html.Span("Status"), html.Span(status)], className="status-item"),
@@ -462,47 +515,81 @@ def get_status_display():
     ])
 
 def run_simulation_background(scenario):
-    global simulation_data
+    global simulation_data, simulation_running
     prev_state = None
     prev_toll = simulator.toll_price
+    step_count = 0
     
+    print(f"Starting simulation with scenario: {scenario}")
+    
+    # Keep simulation running until explicitly stopped
     while simulation_running:
-        traffic_snapshot = simulator.simulate_step(scenario)
-        simulation_data.append(traffic_snapshot)
-        
-        if len(simulation_data) % 15 == 0:
-            current_state = simulator.get_current_state()
+        try:
+            traffic_snapshot = simulator.simulate_step(scenario)
+            simulation_data.append(traffic_snapshot)
+            step_count += 1
             
-            # Use RL agent for toll recommendation
-            rl_toll, rl_action = rl_agent.get_toll_recommendation(current_state, simulator.toll_price)
+            # Update toll pricing every 15 steps (15 seconds)
+            if step_count % 15 == 0:
+                current_state = simulator.get_current_state()
             
-            # Fallback to hybrid model if needed
-            hybrid_toll = pricing_model.get_price_recommendation(current_state)
-            
-            # Use RL recommendation with 70% probability, hybrid 30%
-            import random
-            if random.random() < 0.7:
-                new_toll = rl_toll
-            else:
-                new_toll = hybrid_toll
-            
-            simulator.update_toll_price(new_toll)
-            
-            # Train RL agent
-            if prev_state:
-                reward = rl_agent.calculate_reward(prev_state, current_state, rl_action, new_toll)
-                rl_agent.train_step(prev_state, rl_action, reward, current_state)
+                # Use RL agent if available, otherwise use hybrid model
+                if RL_AVAILABLE and rl_agent:
+                    try:
+                        rl_toll, rl_action = rl_agent.get_toll_recommendation(current_state, simulator.toll_price)
+                        
+                        # Fallback to hybrid model if needed
+                        hybrid_toll = pricing_model.get_price_recommendation(current_state)
+                        
+                        # Use RL recommendation with 70% probability, hybrid 30%
+                        import random
+                        if random.random() < 0.7:
+                            new_toll = rl_toll
+                        else:
+                            new_toll = hybrid_toll
+                            rl_action = 0  # No RL action taken
+                        
+                        simulator.update_toll_price(new_toll)
+                        
+                        # Train RL agent
+                        if prev_state:
+                            reward = rl_agent.calculate_reward(prev_state, current_state, rl_action, new_toll)
+                            rl_agent.train_step(prev_state, rl_action, reward, current_state)
+                            
+                            # Train hybrid model
+                            pricing_model.train_step(prev_state, simulator.toll_price, current_state)
+                            
+                    except Exception as e:
+                        print(f"RL agent error: {e}, falling back to hybrid model")
+                        new_toll = pricing_model.get_price_recommendation(current_state)
+                        simulator.update_toll_price(new_toll)
+                        
+                        if prev_state:
+                            pricing_model.train_step(prev_state, simulator.toll_price, current_state)
+                else:
+                    # Use hybrid model only
+                    new_toll = pricing_model.get_price_recommendation(current_state)
+                    simulator.update_toll_price(new_toll)
+                    
+                    if prev_state:
+                        pricing_model.train_step(prev_state, simulator.toll_price, current_state)
                 
-                # Train hybrid model
-                pricing_model.train_step(prev_state, simulator.toll_price, current_state)
+                prev_state = current_state
+                prev_toll = new_toll
+        
+            # Keep only last 1000 data points
+            if len(simulation_data) > 1000:
+                simulation_data = simulation_data[-1000:]
             
-            prev_state = current_state
-            prev_toll = new_toll
-        
-        if len(simulation_data) > 1000:
-            simulation_data = simulation_data[-1000:]
-        
-        time.sleep(1)
+            time.sleep(1)
+            
+        except Exception as e:
+            print(f"Simulation error: {e}")
+            # Don't stop simulation on errors, just continue
+            time.sleep(1)
+            continue
+    
+    print("Simulation stopped")
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=8050)
